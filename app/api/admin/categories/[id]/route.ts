@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+type RouteContext = {
+  params: Promise<{ id: string }>
+}
+
 // GET /api/admin/categories/[id]
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } } // <- sem Promise!
+  { params }: RouteContext
 ) {
-  const { id } = params
+  const { id } = await params // <- Adicionado await
 
   const category = await prisma.category.findUnique({ where: { id } })
 
@@ -20,9 +24,9 @@ export async function GET(
 // PUT /api/admin/categories/[id]
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } } // <- sem Promise!
+  { params }: RouteContext
 ) {
-  const { id } = params
+  const { id } = await params // <- Adicionado await
   const data = await req.json()
 
   const category = await prisma.category.update({
@@ -36,9 +40,9 @@ export async function PUT(
 // DELETE /api/admin/categories/[id]
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } } // <- sem Promise!
+  { params }: RouteContext
 ) {
-  const { id } = params
+  const { id } = await params // <- Adicionado await
 
   await prisma.category.delete({ where: { id } })
 
