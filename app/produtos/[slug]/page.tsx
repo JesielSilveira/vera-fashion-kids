@@ -23,7 +23,7 @@ export default async function ProductPage({ params }: Props) {
 
   if (!product || !product.active) notFound()
 
-  const relatedProducts = product.categoryId
+  const relatedProductsRaw = product.categoryId
     ? await prisma.product.findMany({
         where: {
           categoryId: product.categoryId,
@@ -31,42 +31,41 @@ export default async function ProductPage({ params }: Props) {
           active: true,
         },
         take: 4,
+        include: { variations: true, reviews: true, category: true, },
       })
     : []
 
-  const productForClient = {
-    id: product.id,
-    slug: product.slug,
-    name: product.name,
-    price: product.price,
-    description: product.description ?? "",
-
-    images: Array.isArray(product.images) ? product.images : [],
-
-    variations: product.variations.map(v => ({
+  const mapToClientProduct = (p: typeof product) => ({
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    price: p.price,
+    description: p.description ?? "",
+    images: Array.isArray(p.images)
+      ? p.images.filter((img): img is string => typeof img === "string")
+      : [],
+    variations: p.variations.map(v => ({
       id: v.id,
       size: v.size,
       color: v.color,
       stock: v.stock,
       priceDiff: v.priceDiff,
     })),
-
-    weight: product.weight,
-    height: product.height,
-    width: product.width,
-    length: product.length,
-
-    categoryId: product.categoryId, // ✅ ESSENCIAL
-
-    reviews: product.reviews.map(r => ({
+    weight: p.weight,
+    height: p.height,
+    width: p.width,
+    length: p.length,
+    categoryId: p.categoryId,
+    reviews: p.reviews.map(r => ({
       id: r.id,
       name: r.name,
       rating: r.rating,
       comment: r.comment,
     })),
-  }
+  })
 
-  
+  const productForClient = mapToClientProduct(product)
+  const relatedProducts = relatedProductsRaw.map(mapToClientProduct)
 
   return (
     <ProductClient

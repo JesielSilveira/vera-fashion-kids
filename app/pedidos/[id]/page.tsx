@@ -43,7 +43,7 @@ export default async function PedidoDetalhePage({
         {order.items.map((item) => (
           <div key={item.id} className="flex justify-between text-sm">
             <span>
-              {item.product.name}
+              {item.product?.name ?? "Produto removido"}
               {item.size || item.color
                 ? ` (${item.size ?? "-"} / ${item.color ?? "-"})`
                 : ""}{" "}

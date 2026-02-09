@@ -10,9 +10,11 @@ export default function OrdersPage() {
     return <p className="p-8">Faça login para ver seus pedidos</p>
   }
 
-  const userOrders = orders.filter(
-    (order) => order.userEmail === session.user.email
-  )
+const userOrders = orders.filter(
+  (order) => order.customer === session.user.email
+)
+
+
 
   if (userOrders.length === 0) {
     return <p className="p-8">Você ainda não fez pedidos</p>

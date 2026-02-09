@@ -1,23 +1,21 @@
-import { NextResponse } from "next/server"
+import { NextResponse, NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-type Params = {
-  params: {
-    id: string
-  }
-}
-
 // 🔹 PUT → atualizar
-export async function PUT(req: Request, { params }: Params) {
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> } // ⚠️ params é Promise
+) {
+  const { id } = await context.params // precisa do await
   const body = await req.json()
 
   const product = await prisma.product.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       name: body.name,
       slug: body.slug,
       price: body.price,
-      images: body.image,
+      images: body.images, // ⚠️ se for array
     },
   })
 
@@ -25,9 +23,14 @@ export async function PUT(req: Request, { params }: Params) {
 }
 
 // 🔹 DELETE → remover
-export async function DELETE(_: Request, { params }: Params) {
+export async function DELETE(
+  _: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params
+
   await prisma.product.delete({
-    where: { id: params.id },
+    where: { id },
   })
 
   return NextResponse.json({ success: true })

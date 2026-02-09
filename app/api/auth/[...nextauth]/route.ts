@@ -36,7 +36,7 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             name: user.name ?? "",
             email: user.email,
-            role: user.role.toUpperCase(),
+            role: user.role.toLowerCase(),
           }
         } catch (err) {
           console.error("AUTHORIZE ERROR:", err)

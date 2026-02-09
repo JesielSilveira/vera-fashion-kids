@@ -1,27 +1,26 @@
-import { NextResponse } from "next/server"
+import { NextResponse, NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-type Props = {
-  params: {
-    slug: string
-  }
-}
-
 export async function GET(
-  req: Request,
-  { params }: Props
+  req: NextRequest,
+  context: { params: Promise<{ slug: string }> } // ⚠️ Promise aqui
 ) {
+  const { slug } = await context.params // precisa do await
+
+  if (!slug) {
+    return NextResponse.json(
+      { error: "Categoria não encontrada" },
+      { status: 404 }
+    )
+  }
+
   try {
     const category = await prisma.category.findUnique({
-      where: { slug: params.slug },
+      where: { slug },
       include: {
         products: {
-          where: {
-            active: true,
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
+          where: { active: true },
+          orderBy: { createdAt: "desc" },
         },
       },
     })

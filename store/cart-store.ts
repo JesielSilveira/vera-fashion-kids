@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist, createJSONStorage } from "zustand/middleware"
 
 export type CartProduct = {
   id: string
@@ -27,83 +28,71 @@ type CartStore = {
   clearCart: () => void
 }
 
-export const useCartStore = create<CartStore>((set, get) => ({
-  items: [],
+export const useCartStore = create<CartStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
 
-  addItem: (product, size, color) => {
-    const items = get().items
-
-    const existing = items.find(
-      (i) =>
-        i.id === product.id &&
-        i.size === size &&
-        i.color === color
-    )
-
-    if (existing) {
-      set({
-        items: items.map((i) =>
-          i === existing
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
-        ),
-      })
-    } else {
-      set({
-        items: [
-          ...items,
-          { ...product, quantity: 1, size, color },
-        ],
-      })
-    }
-  },
-
-  addFrete: (item) =>
-    set({
-      items: [
-        ...get().items.filter(
-          (i) => i.id !== "frete-pac" && i.id !== "frete-sedex"
-        ),
-        item,
-      ],
-    }),
-
-  incrementItem: (id, size, color) =>
-    set({
-      items: get().items.map((i) =>
-        i.id === id &&
-        i.size === size &&
-        i.color === color
-          ? { ...i, quantity: i.quantity + 1 }
-          : i
-      ),
-    }),
-
-  decrementItem: (id, size, color) =>
-    set({
-      items: get().items
-        .map((i) =>
-          i.id === id &&
-          i.size === size &&
-          i.color === color
-            ? { ...i, quantity: i.quantity - 1 }
-            : i
+      addItem: (product, size, color) => {
+        const items = get().items
+        const existing = items.find(
+          (i) => i.id === product.id && i.size === size && i.color === color
         )
-        .filter((i) => i.quantity > 0),
+        if (existing) {
+          set({
+            items: items.map((i) =>
+              i === existing ? { ...i, quantity: i.quantity + 1 } : i
+            ),
+          })
+        } else {
+          set({
+            items: [...items, { ...product, quantity: 1, size, color }],
+          })
+        }
+      },
+
+      addFrete: (item) =>
+        set({
+          items: [
+            ...get().items.filter(
+              (i) => i.id !== "frete-pac" && i.id !== "frete-sedex"
+            ),
+            item,
+          ],
+        }),
+
+      incrementItem: (id, size, color) =>
+        set({
+          items: get().items.map((i) =>
+            i.id === id && i.size === size && i.color === color
+              ? { ...i, quantity: i.quantity + 1 }
+              : i
+          ),
+        }),
+
+      decrementItem: (id, size, color) =>
+        set({
+          items: get().items
+            .map((i) =>
+              i.id === id && i.size === size && i.color === color
+                ? { ...i, quantity: i.quantity - 1 }
+                : i
+            )
+            .filter((i) => i.quantity > 0),
+        }),
+
+      removeItem: (id, size, color) =>
+        set({
+          items: get().items.filter(
+            (i) => !(i.id === id && i.size === size && i.color === color)
+          ),
+        }),
+
+      clearCart: () => set({ items: [] }),
     }),
-
-  removeItem: (id, size, color) =>
-    set({
-      items: get().items.filter(
-        (i) =>
-          !(
-            i.id === id &&
-            i.size === size &&
-            i.color === color
-          )
-      ),
-    }),
-
-  clearCart: () => set({ items: [] }),
-}))
-
+    {
+      name: "cart-storage",
+      storage: createJSONStorage(() => localStorage), // ✅ CORRIGIDO
+    }
+  )
+)
