@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
 // GET /api/admin/categories/[id]
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } } // <- sem Promise!
+) {
   const { id } = params
 
   const category = await prisma.category.findUnique({ where: { id } })
@@ -15,7 +18,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 // PUT /api/admin/categories/[id]
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } } // <- sem Promise!
+) {
   const { id } = params
   const data = await req.json()
 
@@ -28,7 +34,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/admin/categories/[id]
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } } // <- sem Promise!
+) {
   const { id } = params
 
   await prisma.category.delete({ where: { id } })
