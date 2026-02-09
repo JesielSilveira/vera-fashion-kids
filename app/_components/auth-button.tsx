@@ -17,6 +17,6 @@ export function AuthButton() {
   return (
     <Button onClick={() => signIn()}>
       Entrar
-    </Button> // só para o commit
+    </Button> 
   )
 }
