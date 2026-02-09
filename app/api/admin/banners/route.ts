@@ -1,13 +1,11 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const banners = await prisma.banner.findMany({
       orderBy: { order: "asc" },
-      include: {
-        category: true, // 🔹 traz a categoria relacionada
-      },
+      include: { category: true },
     })
 
     const formatted = banners.map(b => ({
@@ -18,7 +16,7 @@ export async function GET() {
       order: b.order,
       active: b.active,
       categoryId: b.categoryId,
-      categorySlug: b.category?.slug ?? null, // 🔹 adiciona slug da categoria
+      categorySlug: b.category?.slug ?? null,
     }))
 
     return NextResponse.json(formatted)
@@ -28,7 +26,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const data = await req.json()
     console.log("💡 Dados recebidos no POST:", data)
@@ -36,7 +34,6 @@ export async function POST(req: Request) {
     const { title, image, categoryId, order, active } = data
 
     if (!title || !image || !categoryId) {
-      console.warn("💥 Falta algum campo obrigatório")
       return NextResponse.json(
         { error: "Título, imagem e categoria são obrigatórios" },
         { status: 400 }
