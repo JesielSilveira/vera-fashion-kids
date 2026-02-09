@@ -1,18 +1,24 @@
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { NextResponse } from "next/server"
 
-export async function GET() {
-  const orders = await prisma.order.findMany({
-    where: { status: "paid" },
-    orderBy: { createdAt: "asc" },
-  })
+export async function GET(req: NextRequest) {
+  try {
+    const totalUsers = await prisma.user.count()
+    const totalOrders = await prisma.order.count()
+    const totalRevenue = await prisma.order.aggregate({
+      _sum: { total: true },
+    })
 
-  const byDay: Record<string, number> = {}
-
-  for (const order of orders) {
-    const day = order.createdAt.toISOString().slice(0, 10)
-    byDay[day] = (byDay[day] || 0) + order.total
+    return NextResponse.json({
+      totalUsers,
+      totalOrders,
+      totalRevenue: totalRevenue._sum.total ?? 0,
+    })
+  } catch (err) {
+    console.error("Erro em /admin/stats:", err)
+    return NextResponse.json(
+      { error: "Erro ao buscar estatísticas" },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json(byDay)
 }
