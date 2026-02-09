@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react" // 1. Importe o Suspense
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useSearchParams } from "next/navigation"
 
-export default function ResetPasswordPage() {
+// 2. Crie um sub-componente com a lógica do formulário
+function ResetPasswordForm() {
   const params = useSearchParams()
   const token = params.get("token") ?? ""
   const [password, setPassword] = useState("")
@@ -26,7 +27,7 @@ export default function ResetPasswordPage() {
     setLoading(false)
   }
 
-  if (done) return <p>Senha redefinida com sucesso! Agora faça login.</p>
+  if (done) return <p className="py-20 text-center">Senha redefinida com sucesso! Agora faça login.</p>
 
   return (
     <section className="mx-auto max-w-md px-4 py-20">
@@ -43,5 +44,14 @@ export default function ResetPasswordPage() {
         </Button>
       </form>
     </section>
+  )
+}
+
+// 3. O export default envolve o formulário em Suspense
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center">Carregando...</div>}>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }
