@@ -2,11 +2,10 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-type Ctx = { params: { id: string } }
+type Ctx = { params: Promise<{ id: string }> }
 
-/* 🔹 GET */
 export async function GET(req: NextRequest, { params }: Ctx) {
-  const { id } = params
+  const { id } = await params  // ✅ precisa await
 
   const category = await prisma.category.findUnique({ where: { id } })
   if (!category) return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 })
@@ -14,19 +13,16 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   return NextResponse.json(category)
 }
 
-/* 🔹 PUT */
 export async function PUT(req: NextRequest, { params }: Ctx) {
-  const { id } = params
+  const { id } = await params
   const data = await req.json()
 
   const cat = await prisma.category.update({ where: { id }, data })
   return NextResponse.json(cat)
 }
 
-/* 🔹 DELETE */
 export async function DELETE(req: NextRequest, { params }: Ctx) {
-  const { id } = params
-
+  const { id } = await params
   await prisma.category.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }
