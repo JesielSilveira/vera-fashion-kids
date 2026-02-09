@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-// 🔹 GET → pegar categoria
+// GET /api/admin/categories/[id]
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params
 
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(category)
 }
 
-// 🔹 PUT → atualizar categoria
+// PUT /api/admin/categories/[id]
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params
   const data = await req.json()
@@ -27,7 +27,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(category)
 }
 
-// 🔹 DELETE → remover categoria
+// DELETE /api/admin/categories/[id]
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params
 
