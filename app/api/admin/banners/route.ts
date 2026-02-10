@@ -31,24 +31,37 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json()
-    console.log("💡 Dados recebidos no POST:", data)
+    console.log("👉 Tentando criar banner com:", data) // 👈 Olhe isso no log da Vercel!
 
     const { title, image, categoryId, order, active } = data
 
+    // Validação básica
     if (!title || !image || !categoryId) {
       return NextResponse.json(
-        { error: "Título, imagem e categoria são obrigatórios" },
+        { error: "Campos obrigatórios faltando (Título, Imagem ou Categoria)" },
         { status: 400 }
       )
     }
 
     const banner = await prisma.banner.create({
-      data: { title, image, categoryId, order, active },
+      data: { 
+        title, 
+        image, // Certifique-se que aqui é uma URL, não o arquivo bruto
+        categoryId, 
+        order: Number(order || 0), // Garante que seja número
+        active: active ?? true 
+      },
     })
 
     return NextResponse.json(banner, { status: 201 })
   } catch (err: any) {
-    console.error("🔥 Erro no POST:", err)
-    return NextResponse.json({ error: err.message || "Erro ao criar banner" }, { status: 500 })
+    console.error("🔥 Erro detalhado no POST Banner:", err)
+    
+    // Se o erro for do Prisma sobre relação, avisamos melhor
+    if (err.code === 'P2003') {
+      return NextResponse.json({ error: "Categoria selecionada não existe no banco." }, { status: 400 })
+    }
+
+    return NextResponse.json({ error: "Erro ao salvar no banco. Verifique os dados." }, { status: 500 })
   }
 }

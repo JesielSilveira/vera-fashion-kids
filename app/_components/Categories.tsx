@@ -34,13 +34,15 @@ export async function Categories() {
                 <CardContent className="relative p-0">
                   {/* Imagem com overlay e texto */}
                   <div className="relative h-40 w-full bg-muted">
-                    <Image
-                      src={imgSrc}
-                      alt={category.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 50vw, 25vw"
-                    />
+                    <img
+                          src={imgSrc}
+                          alt={category.name}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          style={{ objectFit: 'cover' }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/placeholder-category.jpg"; // Fallback se a URL falhar
+                          }}
+                        />
                     <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 z-10" />
                     <div className="absolute inset-0 flex items-center justify-center px-2 z-20">
                       <span className="text-center text-lg font-semibold text-white">
