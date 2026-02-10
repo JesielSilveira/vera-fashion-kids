@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -73,7 +72,9 @@ export default function NewBannerPage() {
   // =========================
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title || !file || !selectedCategory) return alert("Preencha todos os campos")
+    if (!title || !file || !selectedCategory) {
+      return alert("Preencha todos os campos")
+    }
 
     setLoading(true)
     try {
@@ -82,8 +83,12 @@ export default function NewBannerPage() {
       formData.append("file", file)
 
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData })
-      if (!uploadRes.ok) throw new Error("Falha no upload da imagem")
-      const uploadData = await uploadRes.json()
+      let uploadData: { url?: string } = {}
+      try {
+        uploadData = await uploadRes.json()
+      } catch {
+        throw new Error("Falha no upload da imagem")
+      }
 
       if (!uploadData.url) throw new Error("Falha no upload da imagem")
 
@@ -101,8 +106,7 @@ export default function NewBannerPage() {
       })
 
       if (!res.ok) {
-        const err = await res.json()
-        console.error(err)
+        const err = await res.json().catch(() => ({}))
         throw new Error(err?.message || "Erro ao criar banner")
       }
 
@@ -136,9 +140,11 @@ export default function NewBannerPage() {
             <Label>Imagem</Label>
             <Input type="file" accept="image/*" onChange={handleFileChange} required />
             {preview && (
-              <div className="relative mt-3 h-40 w-full overflow-hidden rounded-md border">
-                <Image src={preview} alt="Preview" fill className="object-cover" />
-              </div>
+              <img
+                src={preview}
+                alt="Preview"
+                className="mt-3 h-40 w-full object-cover rounded-md border"
+              />
             )}
           </div>
 
