@@ -38,7 +38,7 @@ export function BannerCarousel() {
         opts={{ loop: true }}
         plugins={[
           Autoplay({
-            delay: 4000,          // tempo entre slides (ms)
+            delay: 4000,           // tempo entre slides (ms)
             stopOnInteraction: false, // continua mesmo se clicar
           }),
         ]}
@@ -51,24 +51,25 @@ export function BannerCarousel() {
                 <div
                   className="
                     relative w-full
-                    h-[220px]
-                    sm:h-[300px]
-                    md:h-[420px]
-                    lg:h-[520px]
+                    h-[220px] sm:h-[300px]
+                    md:h-[420px] lg:h-[520px]
                     overflow-hidden
                   "
                 >
+                  {/* ✅ Next.js 13+ modo seguro */}
                   <Image
                     src={banner.image}
                     alt={banner.title}
                     fill
                     sizes="100vw"
+                    style={{ objectFit: "cover" }}
                     priority
-                    className="object-cover"
                   />
 
+                  {/* Overlay */}
                   <div className="absolute inset-0 bg-black/40" />
 
+                  {/* Texto */}
                   <div className="absolute inset-0 flex items-center justify-center px-4 text-center">
                     <h2 className="text-white font-bold text-xl sm:text-2xl md:text-4xl drop-shadow">
                       {banner.title}
@@ -80,6 +81,7 @@ export function BannerCarousel() {
           ))}
         </CarouselContent>
 
+        {/* Navegação */}
         <CarouselPrevious className="left-3" />
         <CarouselNext className="right-3" />
       </Carousel>

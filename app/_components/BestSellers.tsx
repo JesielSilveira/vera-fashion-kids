@@ -8,24 +8,18 @@ import { Badge } from "@/components/ui/badge"
 
 export async function BestSellers() {
   const products = await prisma.product.findMany({
-    where: {
-      active: true,
-    },
-    orderBy: {
-      orders: {
-        _count: "desc",
-      },
-    },
+    where: { active: true },
+    orderBy: { orders: { _count: "desc" } },
     take: 8,
   })
+
+  if (!products || products.length === 0) return null
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-12">
       <div className="mb-8 flex items-center gap-2">
         <Flame className="h-5 w-5 text-primary" />
-        <h2 className="text-2xl font-bold">
-          Mais vendidos
-        </h2>
+        <h2 className="text-2xl font-bold">Mais vendidos</h2>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -38,18 +32,18 @@ export async function BestSellers() {
               <CardContent className="p-4">
 
                 {/* ranking */}
-                <Badge className="mb-2 w-fit">
-                  #{index + 1} mais vendido
-                </Badge>
+                <Badge className="mb-2 w-fit">#{index + 1} mais vendido</Badge>
 
                 {/* imagem */}
-                <Link href={`/produtos/${product.slug}`}>
+                <Link href={`/produtos/${product.slug}`} className="block">
                   <div className="relative mb-4 h-40 w-full">
                     <Image
                       src={image}
                       alt={product.name}
                       fill
-                      className="object-contain rounded-lg"
+                      style={{ objectFit: "contain" }} // ✅ Next.js 13+
+                      sizes="100vw"
+                      className="rounded-lg"
                     />
                   </div>
                 </Link>
@@ -67,10 +61,7 @@ export async function BestSellers() {
 
               {/* botão */}
               <CardFooter className="mt-auto p-4">
-                <Link
-                  href={`/produtos/${product.slug}`}
-                  className="w-full"
-                >
+                <Link href={`/produtos/${product.slug}`} className="w-full">
                   <Button className="w-full gap-2">
                     <ShoppingCart className="h-4 w-4" />
                     Ver produto

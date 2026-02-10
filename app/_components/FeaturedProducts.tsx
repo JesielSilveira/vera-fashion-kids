@@ -20,19 +20,21 @@ export async function FeaturedProducts() {
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {products.map((product) => {
-        const images = (product.images ?? []) as string[]
+          const images = (product.images ?? []) as string[]
           const image = images[0] ?? "/placeholder.png"
 
           return (
             <Card key={product.id} className="flex flex-col">
               <CardContent className="p-4">
-                <Link href={`/produtos/${product.slug}`}>
+                <Link href={`/produtos/${product.slug}`} className="block">
                   <div className="relative mb-4 h-40 w-full">
                     <Image
                       src={image}
                       alt={product.name}
                       fill
-                      className="object-contain rounded-lg"
+                      style={{ objectFit: "contain" }} // ✅ modo seguro Next.js 13+
+                      className="rounded-lg"
+                      sizes="100vw"
                     />
                   </div>
                   <h3 className="mb-2 text-sm font-medium line-clamp-2 hover:underline">
