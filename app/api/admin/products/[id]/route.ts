@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma"
-import { NextResponse } from "next/server"
+import { NextResponse, NextRequest } from "next/server"
 
 export const dynamic = 'force-dynamic'
 
-// Tipagem correta: params é objeto simples
+// Tipagem correta do Next 16 App Router
 type Params = { id: string }
 
-export async function GET(req: Request, { params }: { params: Params }) {
+// GET - pegar produto pelo id
+export async function GET(req: NextRequest, { params }: { params: Params }) {
   const { id } = params
 
   const product = await prisma.product.findUnique({
@@ -21,7 +22,8 @@ export async function GET(req: Request, { params }: { params: Params }) {
   return NextResponse.json(product)
 }
 
-export async function PUT(req: Request, { params }: { params: Params }) {
+// PUT - atualizar produto
+export async function PUT(req: NextRequest, { params }: { params: Params }) {
   const { id } = params
   const body = await req.json()
 
@@ -70,7 +72,8 @@ export async function PUT(req: Request, { params }: { params: Params }) {
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: Params }) {
+// DELETE - deletar produto
+export async function DELETE(req: NextRequest, { params }: { params: Params }) {
   const { id } = params
 
   try {
