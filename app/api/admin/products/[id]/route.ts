@@ -1,18 +1,17 @@
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
-type Params = { id: string } // id da rota /[id]
+// Tipagem correta: params é objeto simples
+type Params = { id: string }
 
 export async function GET(req: Request, { params }: { params: Params }) {
   const { id } = params
 
   const product = await prisma.product.findUnique({
     where: { id },
-    include: {
-      variations: true,
-    },
+    include: { variations: true },
   })
 
   if (!product) {
@@ -34,23 +33,18 @@ export async function PUT(req: Request, { params }: { params: Params }) {
         slug: body.slug,
         price: Number(body.price),
         description: body.description ?? "",
-
         images: Array.isArray(body.images) ? body.images : [],
         sizes: Array.isArray(body.sizes) ? body.sizes : [],
         colors: Array.isArray(body.colors) ? body.colors : [],
         stock: Number(body.stock ?? 0),
-
         active: body.active ?? true,
         featured: body.featured ?? false,
         bestSeller: body.bestSeller ?? false,
-
         weight: body.weight != null ? Number(body.weight) : null,
         height: body.height != null ? Number(body.height) : null,
         width: body.width != null ? Number(body.width) : null,
         length: body.length != null ? Number(body.length) : null,
-
         categoryId: body.categoryId ?? null,
-
         variations: Array.isArray(body.variations)
           ? {
               deleteMany: {},
@@ -63,9 +57,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
             }
           : undefined,
       },
-      include: {
-        variations: true,
-      },
+      include: { variations: true },
     })
 
     return NextResponse.json(product)
