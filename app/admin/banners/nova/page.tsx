@@ -38,9 +38,7 @@ export default function NewBannerPage() {
         if (!res.ok) throw new Error("Falha ao buscar categorias")
 
         const data: Category[] = await res.json()
-        // filtra só categorias ativas
-        const activeCategories = data.filter(c => c.active)
-        setCategories(activeCategories)
+        setCategories(data.filter(c => c.active))
       } catch (err) {
         console.error(err)
         alert("Erro ao carregar categorias")
@@ -50,13 +48,25 @@ export default function NewBannerPage() {
   }, [])
 
   // =========================
-  // LIMPA PREVIEW AO DESCARTE
+  // LIMPA PREVIEW AO DESCARTE OU NOVA IMAGEM
   // =========================
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview)
     }
   }, [preview])
+
+  // =========================
+  // SELEÇÃO DE ARQUIVO
+  // =========================
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null
+    if (!f) return
+
+    if (preview) URL.revokeObjectURL(preview)
+    setFile(f)
+    setPreview(URL.createObjectURL(f))
+  }
 
   // =========================
   // SUBMIT
@@ -70,8 +80,11 @@ export default function NewBannerPage() {
       // Upload da imagem
       const formData = new FormData()
       formData.append("file", file)
+
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData })
+      if (!uploadRes.ok) throw new Error("Falha no upload da imagem")
       const uploadData = await uploadRes.json()
+
       if (!uploadData.url) throw new Error("Falha no upload da imagem")
 
       // Criar banner
@@ -86,16 +99,17 @@ export default function NewBannerPage() {
           active,
         }),
       })
+
       if (!res.ok) {
         const err = await res.json()
         console.error(err)
-        throw new Error("Erro ao criar banner")
+        throw new Error(err?.message || "Erro ao criar banner")
       }
 
       router.push("/admin/banners")
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      alert("Erro ao criar banner")
+      alert(err?.message || "Erro ao criar banner")
     } finally {
       setLoading(false)
     }
@@ -120,17 +134,7 @@ export default function NewBannerPage() {
 
           <div>
             <Label>Imagem</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (!f) return
-                setFile(f)
-                setPreview(URL.createObjectURL(f))
-              }}
-              required
-            />
+            <Input type="file" accept="image/*" onChange={handleFileChange} required />
             {preview && (
               <div className="relative mt-3 h-40 w-full overflow-hidden rounded-md border">
                 <Image src={preview} alt="Preview" fill className="object-cover" />
@@ -175,7 +179,7 @@ export default function NewBannerPage() {
         <Button type="submit" disabled={loading}>
           {loading ? "Salvando..." : "Salvar banner"}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+        <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
           Cancelar
         </Button>
       </div>

@@ -8,12 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function NewCategoryPage() {
   const router = useRouter()
@@ -37,48 +32,55 @@ export default function NewCategoryPage() {
     }
   }
 
-    async function handleSubmit(e: React.FormEvent) {
-      e.preventDefault()
-      setLoading(true)
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
 
-      try {
-        const formData = new FormData()
-        formData.append("name", name.trim())
-        formData.append("slug", slug.trim() || makeProductSlug(name))
-        formData.append("active", String(active))
-        if (imageFile) formData.append("file", imageFile) // ⚠ 'file' aqui é o mesmo que na API
-
-        const res = await fetch("/api/admin/categories", {
-          method: "POST",
-          body: formData,
+    try {
+      // Converte a imagem para base64, se houver
+      let base64Image: string | null = null
+      if (imageFile) {
+        base64Image = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(imageFile)
         })
-
-        if (!res.ok) throw new Error("Erro ao criar categoria")
-
-        router.push("/admin/categorias")
-      } catch (err: any) {
-        console.error(err)
-        alert(err.message || "Erro desconhecido")
-      } finally {
-        setLoading(false)
       }
-    }
 
+      const res = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          slug: slug.trim() || makeProductSlug(name),
+          active,
+          image: base64Image, // envia base64 direto pro banco
+        }),
+      })
+
+      if (!res.ok) throw new Error("Erro ao criar categoria")
+
+      router.push("/admin/categorias")
+    } catch (err: any) {
+      console.error(err)
+      alert(err.message || "Erro desconhecido")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Nova categoria</h1>
-        <p className="text-muted-foreground">
-          Cadastre uma nova categoria de produtos
-        </p>
+        <p className="text-muted-foreground">Cadastre uma nova categoria de produtos</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Informações da categoria</CardTitle>
         </CardHeader>
-
         <CardContent className="space-y-4">
           <div>
             <Label>Nome</Label>
@@ -131,12 +133,7 @@ export default function NewCategoryPage() {
         <Button type="submit" disabled={loading}>
           {loading ? "Salvando..." : "Salvar categoria"}
         </Button>
-
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-        >
+        <Button type="button" variant="outline" onClick={() => router.back()}>
           Cancelar
         </Button>
       </div>

@@ -22,13 +22,10 @@ type Category = {
 type Variation = {
   size: string
   color: string
-
   stock: number
   sku: string
-
   imageIndex?: number
   priceDiff?: number
-
   weight?: number
   height?: number
   width?: number
@@ -80,13 +77,11 @@ export default function NewProductPage() {
   // =========================
   // HELPERS
   // =========================
-function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-  const files = e.currentTarget.files
-  if (!files) return
-
-  setImages((prev) => [...prev, ...Array.from(files)])
-}
-
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.currentTarget.files
+    if (!files) return
+    setImages((prev) => [...prev, ...Array.from(files)])
+  }
 
   function addVariation() {
     setVariations((prev) => [
@@ -107,9 +102,7 @@ function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     value: Variation[T]
   ) {
     setVariations((prev) =>
-      prev.map((v, i) =>
-        i === index ? { ...v, [field]: value } : v
-      )
+      prev.map((v, i) => (i === index ? { ...v, [field]: value } : v))
     )
   }
 
@@ -129,27 +122,19 @@ function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     }
 
     try {
-      // 🔹 upload imagens
-      const imageUrls: string[] = []
-
+      // 🔹 Converte imagens para base64
+      const imageBase64: string[] = []
       for (const file of images) {
-        const formData = new FormData()
-        formData.append("file", file)
-
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
+        const reader = new FileReader()
+        const base64 = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
         })
-
-        if (!res.ok) {
-          throw new Error("Erro no upload da imagem")
-        }
-
-        const data = await res.json()
-        imageUrls.push(data.url)
+        imageBase64.push(base64)
       }
 
-      // 🔹 sanitiza variações
+      // 🔹 Sanitiza variações
       const safeVariations = variations.map((v) => ({
         ...v,
         stock: Number(v.stock) || 0,
@@ -158,6 +143,7 @@ function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
           typeof v.imageIndex === "number" ? v.imageIndex : undefined,
       }))
 
+      // 🔹 Envia para API
       const res = await fetch("/api/admin/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -169,13 +155,13 @@ function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
           active,
           featured,
           bestSeller,
-          images: imageUrls,
+          images: imageBase64, // 📌 base64 direto para o banco
           categoryId,
           variations: safeVariations,
         }),
       })
 
-      if (!res.ok) throw new Error()
+      if (!res.ok) throw new Error("Erro ao salvar produto")
 
       router.push("/admin/produtos")
       router.refresh()
@@ -214,15 +200,12 @@ function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
             value={slug}
             onChange={(e) => setSlug(makeProductSlug(e.target.value))}
           />
-          
-              <Textarea
-          placeholder="Descrição"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full max-w-full resize-y overflow-x-hidden whitespace-pre-wrap break-all"
-        />
-
-
+          <Textarea
+            placeholder="Descrição"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full max-w-full resize-y overflow-x-hidden whitespace-pre-wrap break-all"
+          />
           <Input
             type="number"
             placeholder="Preço base"
@@ -238,7 +221,12 @@ function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
           <CardTitle>Imagens</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input type="file" multiple accept="image/*" onChange={handleImageUpload} />
+          <Input
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleImageUpload}
+          />
           <div className="flex gap-2 flex-wrap">
             {images.map((img, i) => (
               <Badge key={i}>{img.name}</Badge>
@@ -267,81 +255,78 @@ function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
       </Card>
 
       {/* VARIAÇÕES */}
-{/* VARIAÇÕES */}
-<Card>
-  <CardHeader>
-    <CardTitle>Variações</CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-3">
-    {variations.map((v, i) => (
-      <div key={i} className="grid md:grid-cols-10 gap-2 border p-3 rounded">
-        <Input
-          placeholder="Tamanho"
-          value={v.size}
-          onChange={(e) => updateVariation(i, "size", e.target.value)}
-        />
-        <Input
-          placeholder="Cor"
-          value={v.color}
-          onChange={(e) => updateVariation(i, "color", e.target.value)}
-        />
-        <Input
-          placeholder="SKU"
-          value={v.sku}
-          onChange={(e) => updateVariation(i, "sku", e.target.value)}
-        />
-        <Input
-          type="number"
-          placeholder="Estoque"
-          value={v.stock}
-          onChange={(e) => updateVariation(i, "stock", Number(e.target.value))}
-        />
-        <Input
-          type="number"
-          placeholder="Dif. preço"
-          value={v.priceDiff}
-          onChange={(e) => updateVariation(i, "priceDiff", Number(e.target.value))}
-        />
-        {/* DIMENSÕES */}
-        <Input
-          type="number"
-          placeholder="Peso (kg)"
-          value={v.weight ?? ""}
-          onChange={(e) => updateVariation(i, "weight", Number(e.target.value))}
-        />
-        <Input
-          type="number"
-          placeholder="Altura (cm)"
-          value={v.height ?? ""}
-          onChange={(e) => updateVariation(i, "height", Number(e.target.value))}
-        />
-        <Input
-          type="number"
-          placeholder="Largura (cm)"
-          value={v.width ?? ""}
-          onChange={(e) => updateVariation(i, "width", Number(e.target.value))}
-        />
-        <Input
-          type="number"
-          placeholder="Comprimento (cm)"
-          value={v.length ?? ""}
-          onChange={(e) => updateVariation(i, "length", Number(e.target.value))}
-        />
-        <Button
-          type="button"
-          variant="destructive"
-          onClick={() => removeVariation(i)}
-        >
-          Remover
-        </Button>
-      </div>
-    ))}
-    <Button type="button" onClick={addVariation}>
-      Adicionar variação
-    </Button>
-  </CardContent>
-</Card>
-
+      <Card>
+        <CardHeader>
+          <CardTitle>Variações</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {variations.map((v, i) => (
+            <div key={i} className="grid md:grid-cols-10 gap-2 border p-3 rounded">
+              <Input
+                placeholder="Tamanho"
+                value={v.size}
+                onChange={(e) => updateVariation(i, "size", e.target.value)}
+              />
+              <Input
+                placeholder="Cor"
+                value={v.color}
+                onChange={(e) => updateVariation(i, "color", e.target.value)}
+              />
+              <Input
+                placeholder="SKU"
+                value={v.sku}
+                onChange={(e) => updateVariation(i, "sku", e.target.value)}
+              />
+              <Input
+                type="number"
+                placeholder="Estoque"
+                value={v.stock}
+                onChange={(e) => updateVariation(i, "stock", Number(e.target.value))}
+              />
+              <Input
+                type="number"
+                placeholder="Dif. preço"
+                value={v.priceDiff}
+                onChange={(e) => updateVariation(i, "priceDiff", Number(e.target.value))}
+              />
+              <Input
+                type="number"
+                placeholder="Peso (kg)"
+                value={v.weight ?? ""}
+                onChange={(e) => updateVariation(i, "weight", Number(e.target.value))}
+              />
+              <Input
+                type="number"
+                placeholder="Altura (cm)"
+                value={v.height ?? ""}
+                onChange={(e) => updateVariation(i, "height", Number(e.target.value))}
+              />
+              <Input
+                type="number"
+                placeholder="Largura (cm)"
+                value={v.width ?? ""}
+                onChange={(e) => updateVariation(i, "width", Number(e.target.value))}
+              />
+              <Input
+                type="number"
+                placeholder="Comprimento (cm)"
+                value={v.length ?? ""}
+                onChange={(e) => updateVariation(i, "length", Number(e.target.value))}
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => removeVariation(i)}
+              >
+                Remover
+              </Button>
+            </div>
+          ))}
+          <Button type="button" onClick={addVariation}>
+            Adicionar variação
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* FLAGS */}
       <Card>
@@ -349,9 +334,18 @@ function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
           <CardTitle>Configurações</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="flex justify-between"><Label>Ativo</Label><Switch checked={active} onCheckedChange={setActive} /></div>
-          <div className="flex justify-between"><Label>Destaque</Label><Switch checked={featured} onCheckedChange={setFeatured} /></div>
-          <div className="flex justify-between"><Label>Mais vendido</Label><Switch checked={bestSeller} onCheckedChange={setBestSeller} /></div>
+          <div className="flex justify-between">
+            <Label>Ativo</Label>
+            <Switch checked={active} onCheckedChange={setActive} />
+          </div>
+          <div className="flex justify-between">
+            <Label>Destaque</Label>
+            <Switch checked={featured} onCheckedChange={setFeatured} />
+          </div>
+          <div className="flex justify-between">
+            <Label>Mais vendido</Label>
+            <Switch checked={bestSeller} onCheckedChange={setBestSeller} />
+          </div>
         </CardContent>
       </Card>
 

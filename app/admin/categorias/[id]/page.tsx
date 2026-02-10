@@ -18,29 +18,37 @@ export default function EditCategoryPage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [active, setActive] = useState(true);
-  const [loading, setLoading] = useState(true);
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // =========================
+  // Load categoria
+  // =========================
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      alert("ID inválido");
+      router.push("/admin/categorias");
+      return;
+    }
 
     async function loadCategory() {
       try {
         const res = await fetch(`/api/admin/categories/${id}`);
-
         if (!res.ok) {
-          console.error("Erro ao buscar categoria:", res.status);
           alert("Categoria não encontrada");
           router.push("/admin/categorias");
           return;
         }
 
         const data = await res.json();
-
-        setName(data.name);
-        setSlug(data.slug);
-        setActive(data.active);
+        setName(data.name ?? "");
+        setSlug(data.slug ?? "");
+        setActive(!!data.active);
       } catch (err) {
-        console.error("Erro inesperado:", err);
+        console.error("Erro ao carregar categoria:", err);
+        alert("Erro ao carregar categoria");
       } finally {
         setLoading(false);
       }
@@ -49,41 +57,61 @@ export default function EditCategoryPage() {
     loadCategory();
   }, [id, router]);
 
+  // =========================
+  // Atualizar categoria
+  // =========================
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
+    if (!id) return;
 
-    const res = await fetch(`/api/admin/categories/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, slug, active }),
-    });
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/categories/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, slug, active }),
+      });
 
-    if (!res.ok) {
-      alert("Erro ao atualizar categoria");
-      return;
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error?.message || "Erro ao atualizar categoria");
+      }
+
+      router.push("/admin/categorias");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Erro desconhecido");
+    } finally {
+      setSaving(false);
     }
-
-    router.push("/admin/categorias");
   }
 
+  // =========================
+  // Deletar categoria
+  // =========================
   async function handleDelete() {
+    if (!id) return;
     if (!confirm("Deseja realmente deletar essa categoria?")) return;
 
-    const res = await fetch(`/api/admin/categories/${id}`, {
-      method: "DELETE",
-    });
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
 
-    if (!res.ok) {
-      alert("Erro ao deletar categoria");
-      return;
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error?.message || "Erro ao deletar categoria");
+      }
+
+      router.push("/admin/categorias");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Erro desconhecido");
+    } finally {
+      setDeleting(false);
     }
-
-    router.push("/admin/categorias");
   }
 
-  if (loading) {
-    return <p>Carregando...</p>;
-  }
+  if (loading) return <p className="text-muted-foreground">Carregando categoria...</p>;
 
   return (
     <form onSubmit={handleUpdate} className="space-y-6">
@@ -112,11 +140,18 @@ export default function EditCategoryPage() {
       </Card>
 
       <div className="flex gap-3">
-        <Button type="submit">Atualizar</Button>
-        <Button type="button" variant="destructive" onClick={handleDelete}>
-          Deletar
+        <Button type="submit" disabled={saving || deleting}>
+          {saving ? "Salvando..." : "Atualizar"}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+        <Button
+          type="button"
+          variant="destructive"
+          onClick={handleDelete}
+          disabled={saving || deleting}
+        >
+          {deleting ? "Deletando..." : "Deletar"}
+        </Button>
+        <Button type="button" variant="outline" onClick={() => router.back()} disabled={saving || deleting}>
           Cancelar
         </Button>
       </div>

@@ -183,16 +183,16 @@ export default function EditProductPage() {
     setSaving(true)
 
     try {
-      // upload novas imagens
+      // 📌 converte novas imagens para base64
       const uploadedImages: string[] = []
-
       for (const file of images) {
-        const formData = new FormData()
-        formData.append("file", file)
-        const res = await fetch("/api/upload", { method: "POST", body: formData })
-        if (!res.ok) throw new Error("Erro no upload da imagem")
-        const data = await res.json()
-        uploadedImages.push(data.url)
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+        uploadedImages.push(base64)
       }
 
       const allImages = [...existingImages, ...uploadedImages]
@@ -209,7 +209,6 @@ export default function EditProductPage() {
         length: v.length ? Number(v.length) : undefined,
       }))
 
-      // enviar PUT
       const res = await fetch(`/api/admin/products/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -221,7 +220,7 @@ export default function EditProductPage() {
           active,
           featured,
           bestSeller,
-          images: allImages,
+          images: allImages, // 📌 base64 direto no banco
           categoryId,
           weight: weight ? Number(weight) : null,
           height: height ? Number(height) : null,
@@ -270,13 +269,12 @@ export default function EditProductPage() {
             value={slug}
             onChange={(e) => setSlug(makeProductSlug(e.target.value))}
           />
-        <Textarea
-          placeholder="Descrição"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full max-w-full resize-y overflow-x-hidden whitespace-pre-wrap break-all"
-        />
-
+          <Textarea
+            placeholder="Descrição"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full max-w-full resize-y overflow-x-hidden whitespace-pre-wrap break-all"
+          />
           <Input
             type="number"
             placeholder="Preço base"
