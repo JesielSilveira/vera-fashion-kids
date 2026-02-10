@@ -17,7 +17,9 @@ export async function POST(req: Request) {
   try {
     const data = await req.formData()
     const file = data.get("file") as File | null
-    const name = data.get("name") as string
+    const name = data.get("name")?.toString()
+    if (!name) return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 })
+
     const active = data.get("active") === "true"
     const slug = (data.get("slug") as string) || slugify(name, { lower: true, strict: true })
 
@@ -43,14 +45,16 @@ export async function POST(req: Request) {
 }
 
 /* PUT */
-export async function PUT(req: Request, context: { params: Record<string, string> }) {
+export async function PUT(req: Request, context: { params: { id: string } }) {
   const id = context.params.id
-  if (!id) return new Response("ID é obrigatório", { status: 400 })
+  if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 })
 
   try {
     const data = await req.formData()
     const file = data.get("file") as File | null
-    const name = data.get("name") as string
+    const name = data.get("name")?.toString()
+    if (!name) return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 })
+
     const active = data.get("active") === "true"
     const slug = (data.get("slug") as string) || slugify(name, { lower: true, strict: true })
 
@@ -77,9 +81,9 @@ export async function PUT(req: Request, context: { params: Record<string, string
 }
 
 /* DELETE */
-export async function DELETE(req: Request, context: { params: Record<string, string> }) {
+export async function DELETE(req: Request, context: { params: { id: string } }) {
   const id = context.params.id
-  if (!id) return new Response("ID é obrigatório", { status: 400 })
+  if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 })
 
   try {
     const relatedProducts = await prisma.product.count({ where: { categoryId: id } })

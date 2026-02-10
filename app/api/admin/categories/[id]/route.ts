@@ -3,13 +3,9 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-type Params = {
-  params: Promise<{ [key: string]: string }>;
-};
-
 // GET /api/admin/categories/[id]
-export async function GET(req: NextRequest, { params }: Params) {
-  const { id } = await params;
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const { id } = params;
   if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
 
   const category = await prisma.category.findUnique({ where: { id } });
@@ -19,8 +15,8 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 // PUT /api/admin/categories/[id]
-export async function PUT(req: NextRequest, { params }: Params) {
-  const { id } = await params;
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const { id } = params;
   if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
 
   const body = await req.json();
@@ -34,8 +30,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
 }
 
 // DELETE /api/admin/categories/[id]
-export async function DELETE(req: NextRequest, { params }: Params) {
-  const { id } = await params;
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const { id } = params;
   if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
 
   await prisma.category.delete({ where: { id } });
