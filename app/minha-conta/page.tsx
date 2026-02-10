@@ -1,8 +1,7 @@
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { Badge } from "@/components/ui/badge"
+"use client"
+
 import { useEffect, useState } from "react"
+import { Badge } from "@/components/ui/badge"
 
 const statusLabels: Record<string, string> = {
   PENDING: "Pendente",
@@ -38,25 +37,9 @@ type Order = {
   createdAt: string
 }
 
-export default async function MinhaContaPage() {
-  const session = await getServerSession(authOptions)
-  const userEmail = session?.user?.email
-
-  if (!userEmail) {
-    return (
-      <section className="mx-auto max-w-4xl px-4 py-12">
-        <h1 className="text-2xl font-bold">Acesse sua conta</h1>
-        <p className="text-muted-foreground">
-          Faça login para visualizar seus pedidos.
-        </p>
-      </section>
-    )
-  }
-
-  // =========================
-  // Busca pedidos do usuário
-  // =========================
+export default function MinhaContaPage() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchOrders() {
@@ -68,12 +51,14 @@ export default async function MinhaContaPage() {
       } catch (err) {
         console.error(err)
         alert("Erro ao carregar pedidos")
+      } finally {
+        setLoading(false)
       }
     }
 
     fetchOrders()
 
-    // Polling a cada 10s para atualizar pedidos novos
+    // Polling a cada 10s
     const interval = setInterval(fetchOrders, 10000)
     return () => clearInterval(interval)
   }, [])
@@ -81,15 +66,21 @@ export default async function MinhaContaPage() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
 
-  return (
-    <section className="mx-auto max-w-4xl px-4 py-12 space-y-6">
-      <h1 className="text-3xl font-bold">Meus pedidos</h1>
+  if (loading) return <p>Carregando pedidos...</p>
 
-      {orders.length === 0 && (
+  if (orders.length === 0)
+    return (
+      <section className="mx-auto max-w-4xl px-4 py-12">
+        <h1 className="text-3xl font-bold">Meus pedidos</h1>
         <p className="text-muted-foreground">
           Você ainda não realizou nenhuma compra.
         </p>
-      )}
+      </section>
+    )
+
+  return (
+    <section className="mx-auto max-w-4xl px-4 py-12 space-y-6">
+      <h1 className="text-3xl font-bold">Meus pedidos</h1>
 
       {orders.map((order) => (
         <div key={order.id} className="rounded-lg border p-4 space-y-3">
