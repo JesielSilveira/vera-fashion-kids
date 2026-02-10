@@ -2,19 +2,24 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import slugify from "slugify"
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
 
+    // 🔹 Cria slug automaticamente se não vier do frontend
+    const slug =
+      body.slug?.trim() ||
+      slugify(body.name ?? "produto", { lower: true, strict: true })
+
     const product = await prisma.product.create({
       data: {
         name: body.name,
-        slug: body.slug,
-        price: Number(body.price),
+        slug,
+        price: Number(body.price ?? 0),
         description: body.description ?? "",
 
-        // 🔹 Campos obrigatórios do schema
         images: Array.isArray(body.images) ? body.images : [],
         sizes: Array.isArray(body.sizes) ? body.sizes : [],
         colors: Array.isArray(body.colors) ? body.colors : [],
@@ -45,18 +50,36 @@ export async function POST(req: Request) {
       },
       include: {
         variations: true,
-        // 🔹 Inclui reviews vazias por padrão (frontend espera esse campo)
-        reviews: true,
+        reviews: true, // retorna vazio para frontend
       },
     })
 
-    // 🔹 Retorna objeto pronto para frontend do slug
+    // 🔹 Formata para frontend
     const formatted = {
-      ...product,
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      price: product.price,
+      description: product.description ?? "",
       images: Array.isArray(product.images) ? product.images : [],
       sizes: Array.isArray(product.sizes) ? product.sizes : [],
       colors: Array.isArray(product.colors) ? product.colors : [],
       stock: product.stock ?? 0,
+      weight: product.weight ?? null,
+      height: product.height ?? null,
+      width: product.width ?? null,
+      length: product.length ?? null,
+      active: product.active,
+      featured: product.featured,
+      bestSeller: product.bestSeller,
+      categoryId: product.categoryId ?? null,
+      variations: product.variations.map(v => ({
+        id: v.id,
+        size: v.size,
+        color: v.color,
+        stock: v.stock,
+        priceDiff: v.priceDiff,
+      })),
       reviews: product.reviews ?? [],
     }
 
