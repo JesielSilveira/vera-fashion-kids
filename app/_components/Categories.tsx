@@ -33,23 +33,21 @@ export async function Categories() {
               <Card className="overflow-hidden transition-transform duration-200 group-hover:scale-[1.03]">
                 <CardContent className="relative p-0">
                   {/* Imagem com overlay e texto */}
-                  <div className="relative h-40 w-full bg-muted">
-                    <img
-                          src={imgSrc}
-                          alt={category.name}
-                          className="absolute inset-0 h-full w-full object-cover"
-                          style={{ objectFit: 'cover' }}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = "/placeholder-category.jpg"; // Fallback se a URL falhar
-                          }}
-                        />
-                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 z-10" />
-                    <div className="absolute inset-0 flex items-center justify-center px-2 z-20">
-                      <span className="text-center text-lg font-semibold text-white">
-                        {category.name}
-                      </span>
+                    <div className="relative h-40 w-full bg-muted">
+                      {/* Usando img simples sem funções para não quebrar o build do servidor */}
+                      <img
+                        src={imgSrc}
+                        alt={category.name}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        style={{ objectFit: 'cover' }}
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 z-10" />
+                      <div className="absolute inset-0 flex items-center justify-center px-2 z-20">
+                        <span className="text-center text-lg font-semibold text-white">
+                          {category.name}
+                        </span>
+                      </div>
                     </div>
-                  </div>
                 </CardContent>
               </Card>
             </Link>
