@@ -28,40 +28,30 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const data = await req.json()
-    console.log("👉 Tentando criar banner com:", data) // 👈 Olhe isso no log da Vercel!
+    const body = await req.json(); // Use JSON, é mais leve que FormData
+    console.log("Recebido:", body);
 
-    const { title, image, categoryId, order, active } = data
+    const { title, image, categoryId, order, active } = body;
 
-    // Validação básica
-    if (!title || !image || !categoryId) {
-      return NextResponse.json(
-        { error: "Campos obrigatórios faltando (Título, Imagem ou Categoria)" },
-        { status: 400 }
-      )
+    if (!image.startsWith('http')) {
+       return NextResponse.json({ error: "Por favor, use um link (URL) da imagem" }, { status: 400 });
     }
 
     const banner = await prisma.banner.create({
-      data: { 
-        title, 
-        image, // Certifique-se que aqui é uma URL, não o arquivo bruto
-        categoryId, 
-        order: Number(order || 0), // Garante que seja número
-        active: active ?? true 
+      data: {
+        title,
+        image, // Aqui vai o link: https://site.com/foto.jpg
+        categoryId,
+        order: Number(order || 0),
+        active: active ?? true,
       },
-    })
+    });
 
-    return NextResponse.json(banner, { status: 201 })
-  } catch (err: any) {
-    console.error("🔥 Erro detalhado no POST Banner:", err)
-    
-    // Se o erro for do Prisma sobre relação, avisamos melhor
-    if (err.code === 'P2003') {
-      return NextResponse.json({ error: "Categoria selecionada não existe no banco." }, { status: 400 })
-    }
-
-    return NextResponse.json({ error: "Erro ao salvar no banco. Verifique os dados." }, { status: 500 })
+    return NextResponse.json(banner, { status: 201 });
+  } catch (err) {
+    console.error("ERRO NO BANNER:", err);
+    return NextResponse.json({ error: "Erro ao salvar banner no banco" }, { status: 500 });
   }
 }
