@@ -3,26 +3,37 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import slugify from "slugify";
 
-// GET /api/admin/categories
 export async function GET() {
-  const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json(categories);
+  try {
+    const categories = await prisma.category.findMany({
+      orderBy: { name: "asc" }
+    });
+    return NextResponse.json(categories);
+  } catch (error) {
+    return NextResponse.json({ error: "Erro ao buscar categorias" }, { status: 500 });
+  }
 }
 
-// POST /api/admin/categories
 export async function POST(req: Request) {
   try {
     const data = await req.json();
-    const name = data.name?.toString().trim();
-    const slug = data.slug?.toString().trim() || slugify(name ?? "", { lower: true, strict: true });
-    const active = Boolean(data.active);
+    
+    if (!data.name) {
+      return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 });
+    }
 
-    if (!name) return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 });
+    const category = await prisma.category.create({
+      data: {
+        name: data.name,
+        slug: data.slug || slugify(data.name, { lower: true, strict: true }),
+        active: data.active ?? true,
+        image: data.image || ""
+      }
+    });
 
-    const category = await prisma.category.create({ data: { name, slug, active } });
     return NextResponse.json(category, { status: 201 });
-  } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: err.message || "Erro ao criar categoria" }, { status: 500 });
+  } catch (error) {
+    console.error("Erro no POST Category:", error);
+    return NextResponse.json({ error: "Erro ao criar categoria (verifique se o slug já existe)" }, { status: 500 });
   }
 }

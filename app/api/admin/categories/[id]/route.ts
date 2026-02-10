@@ -1,67 +1,79 @@
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 type Context = { params: Promise<{ id: string }> };
 
-// GET /api/admin/categories/[id]
-export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params;
-
-  // ✅ Se a pasta no front é /admin/categorias/nova, o id aqui será "nova"
-  if (id === "nova" || id === "new") {
-    return NextResponse.json({ 
-      name: "", 
-      slug: "", 
-      active: true 
-    });
-  }
-
+export async function GET(req: Request, context: Context) {
   try {
-    const category = await prisma.category.findUnique({ where: { id } });
-    
+    const { id } = await context.params;
+
+    // ✅ TRATATIVA PARA O FRONT-END "NOVA"
+    if (id === "nova" || id === "new" || id === "undefined") {
+      return NextResponse.json({
+        name: "",
+        slug: "",
+        active: true,
+        image: ""
+      });
+    }
+
+    const category = await prisma.category.findUnique({
+      where: { id }
+    });
+
     if (!category) {
-      return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 });
+      return NextResponse.json({ error: "Categoria não encontrada no banco" }, { status: 404 });
     }
 
     return NextResponse.json(category);
-  } catch (err) {
-    return NextResponse.json({ error: "Erro no servidor" }, { status: 500 });
+  } catch (error) {
+    console.error("Erro no GET Category:", error);
+    return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 });
   }
 }
 
-// PUT /api/admin/categories/[id]
 export async function PUT(req: Request, context: Context) {
-  const { id } = await context.params;
-  if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
+  try {
+    const { id } = await context.params;
+    const data = await req.json();
 
-  const data = await req.json();
-  const category = await prisma.category.update({ where: { id }, data });
-  return NextResponse.json(category);
+    const category = await prisma.category.update({
+      where: { id },
+      data: {
+        name: data.name,
+        slug: data.slug,
+        active: data.active,
+        image: data.image
+      }
+    });
+
+    return NextResponse.json(category);
+  } catch (error) {
+    return NextResponse.json({ error: "Erro ao atualizar categoria" }, { status: 500 });
+  }
 }
 
-// DELETE /api/admin/categories/[id]
 export async function DELETE(req: Request, context: Context) {
-  const { id } = await context.params;
-
   try {
-    // 1. Desvincular Produtos (setar categoryId como null)
+    const { id } = await context.params;
+
+    // 1. Limpa relações obrigatórias do seu Schema antes de deletar
+    await prisma.banner.deleteMany({ where: { categoryId: id } });
+    
     await prisma.product.updateMany({
       where: { categoryId: id },
       data: { categoryId: null }
     });
 
-    // 2. Deletar Banners vinculados (O seu Schema exige categoryId, então banners sem categoria não podem existir)
-    await prisma.banner.deleteMany({
-      where: { categoryId: id }
-    });
-
-    // 3. Agora sim, deletar a Categoria
+    // 2. Deleta a categoria
     await prisma.category.delete({ where: { id } });
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: "Erro ao excluir. Verifique dependências." }, { status: 500 });
+  } catch (error) {
+    console.error("Erro no DELETE Category:", error);
+    return NextResponse.json({ error: "Erro ao excluir categoria" }, { status: 500 });
   }
 }
