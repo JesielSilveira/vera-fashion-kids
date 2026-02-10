@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,7 @@ type Category = {
 
 export default function NewBannerPage() {
   const router = useRouter()
+
   const [title, setTitle] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -27,15 +29,12 @@ export default function NewBannerPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState("")
 
-  // =========================
-  // CARREGA CATEGORIAS ATIVAS
-  // =========================
+  // Carrega categorias ativas
   useEffect(() => {
     async function fetchCategories() {
       try {
         const res = await fetch("/api/admin/categories")
         if (!res.ok) throw new Error("Falha ao buscar categorias")
-
         const data: Category[] = await res.json()
         setCategories(data.filter(c => c.active))
       } catch (err) {
@@ -46,53 +45,36 @@ export default function NewBannerPage() {
     fetchCategories()
   }, [])
 
-  // =========================
-  // LIMPA PREVIEW AO DESCARTE OU NOVA IMAGEM
-  // =========================
+  // Preview da imagem
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview)
     }
   }, [preview])
 
-  // =========================
-  // SELEÇÃO DE ARQUIVO
-  // =========================
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null
     if (!f) return
-
     if (preview) URL.revokeObjectURL(preview)
     setFile(f)
     setPreview(URL.createObjectURL(f))
   }
 
-  // =========================
-  // SUBMIT
-  // =========================
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title || !file || !selectedCategory) {
-      return alert("Preencha todos os campos")
-    }
+    if (!title || !file || !selectedCategory) return alert("Preencha todos os campos")
 
     setLoading(true)
     try {
       // Upload da imagem
       const formData = new FormData()
       formData.append("file", file)
-
       const uploadRes = await fetch("/api/upload", { method: "POST", body: formData })
-      let uploadData: { url?: string } = {}
-      try {
-        uploadData = await uploadRes.json()
-      } catch {
-        throw new Error("Falha no upload da imagem")
-      }
-
+      if (!uploadRes.ok) throw new Error("Falha no upload da imagem")
+      const uploadData = await uploadRes.json()
       if (!uploadData.url) throw new Error("Falha no upload da imagem")
 
-      // Criar banner
+      // Criar banner via API
       const res = await fetch("/api/admin/banners", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,8 +88,8 @@ export default function NewBannerPage() {
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.message || "Erro ao criar banner")
+        const err = await res.json()
+        throw new Error(err?.error || "Erro ao criar banner")
       }
 
       router.push("/admin/banners")
@@ -119,12 +101,9 @@ export default function NewBannerPage() {
     }
   }
 
-  // =========================
-  // UI
-  // =========================
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h1 className="text-3xl font-bold">Novo banner</h1>
+      <h1 className="text-3xl font-bold">Novo Banner</h1>
 
       <Card>
         <CardHeader>
@@ -140,11 +119,9 @@ export default function NewBannerPage() {
             <Label>Imagem</Label>
             <Input type="file" accept="image/*" onChange={handleFileChange} required />
             {preview && (
-              <img
-                src={preview}
-                alt="Preview"
-                className="mt-3 h-40 w-full object-cover rounded-md border"
-              />
+              <div className="relative mt-3 h-40 w-full overflow-hidden rounded-md border">
+                <Image src={preview} alt="Preview" fill className="object-cover" />
+              </div>
             )}
           </div>
 
@@ -157,21 +134,15 @@ export default function NewBannerPage() {
               required
             >
               <option value="">Selecione uma categoria</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
 
           <div className="max-w-xs">
             <Label>Ordem</Label>
-            <Input
-              type="number"
-              value={order}
-              onChange={(e) => setOrder(Number(e.target.value) || 0)}
-            />
+            <Input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value) || 0)} />
           </div>
 
           <div className="flex justify-between items-center">
@@ -182,12 +153,8 @@ export default function NewBannerPage() {
       </Card>
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={loading}>
-          {loading ? "Salvando..." : "Salvar banner"}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
-          Cancelar
-        </Button>
+        <Button type="submit" disabled={loading}>{loading ? "Salvando..." : "Salvar banner"}</Button>
+        <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Cancelar</Button>
       </div>
     </form>
   )
