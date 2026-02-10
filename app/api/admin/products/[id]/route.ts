@@ -8,7 +8,7 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await context.params // ⚠️ await aqui
+  const { id } = await context.params
 
   const product = await prisma.product.findUnique({
     where: { id },
@@ -75,7 +75,7 @@ export async function PUT(
   }
 }
 
-// DELETE
+// DELETE com dependências
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -83,7 +83,13 @@ export async function DELETE(
   const { id } = await context.params
 
   try {
+    // 🔹 Deleta dependências primeiro
+    await prisma.variation.deleteMany({ where: { productId: id } })
+    await prisma.review.deleteMany({ where: { productId: id } })
+
+    // 🔹 Agora deleta o produto
     await prisma.product.delete({ where: { id } })
+
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     console.error("Erro ao deletar produto:", err)
