@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -57,37 +57,60 @@ const statusColors = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const intervalRef = useRef<number | null>(null) // ✅ Browser interval
+
+  // =========================
+  // Carrega pedidos
+  // =========================
+  async function loadOrders() {
+    try {
+      const res = await fetch("/api/admin/orders")
+      if (!res.ok) throw new Error("Erro ao carregar pedidos")
+      const data: Order[] = await res.json()
+      setOrders(data)
+      setLoading(false)
+    } catch (err) {
+      console.error(err)
+      alert("Erro ao carregar pedidos")
+    }
+  }
 
   useEffect(() => {
-    async function loadOrders() {
-      const res = await fetch("/api/admin/orders")
-      if (!res.ok) {
-        alert("Erro ao carregar pedidos")
-        return
-      }
-
-      setOrders(await res.json())
-      setLoading(false)
-    }
-
     loadOrders()
+
+    // Polling a cada 10 segundos
+    intervalRef.current = window.setInterval(loadOrders, 10000)
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
   }, [])
 
+  // =========================
+  // Atualiza status ou rastreio
+  // =========================
   async function updateOrder(
     orderId: string,
     data: Partial<{ status: Order["status"]; tracking: string }>
   ) {
-    await fetch(`/api/admin/orders/${orderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error("Erro ao atualizar pedido")
 
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, ...data } : o
+      // Atualiza localmente
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, ...data } : o))
       )
-    )
+    } catch (err) {
+      console.error(err)
+      alert("Erro ao atualizar pedido")
+    }
   }
 
   if (loading) return <p>Carregando pedidos...</p>
@@ -100,14 +123,9 @@ export default function OrdersPage() {
         <Card key={order.id}>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>
-                Pedido #{order.id.slice(0, 8)}
-              </CardTitle>
+              <CardTitle>Pedido #{order.id.slice(0, 8)}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                {order.user?.name ||
-                  order.user?.email ||
-                  "Cliente convidado"}{" "}
-                •{" "}
+                {order.user?.name || order.user?.email || "Cliente convidado"} •{" "}
                 {new Date(order.createdAt).toLocaleDateString()}
               </p>
             </div>
@@ -119,10 +137,7 @@ export default function OrdersPage() {
 
           <CardContent className="space-y-3">
             {order.items.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between text-sm"
-              >
+              <div key={item.id} className="flex justify-between text-sm">
                 <span>
                   {item.isFrete ? "🚚 Frete" : item.name}
                   {!item.isFrete && (
@@ -134,27 +149,21 @@ export default function OrdersPage() {
                   × {item.quantity}
                 </span>
 
-                <span>
-                  R$ {(item.price * item.quantity).toFixed(2)}
-                </span>
+                <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
               </div>
             ))}
 
             <div className="flex justify-between border-t pt-3">
               <strong>Total</strong>
-              <strong>
-                R$ {order.total.toFixed(2)}
-              </strong>
+              <strong>R$ {order.total.toFixed(2)}</strong>
             </div>
 
-            {/* STATUS */}
+            {/* Status */}
             <div className="max-w-xs space-y-2">
               <Select
                 value={order.status}
                 onValueChange={(value) =>
-                  updateOrder(order.id, {
-                    status: value as Order["status"],
-                  })
+                  updateOrder(order.id, { status: value as Order["status"] })
                 }
               >
                 <SelectTrigger>
@@ -173,9 +182,7 @@ export default function OrdersPage() {
                 placeholder="Código de rastreio"
                 defaultValue={order.tracking ?? ""}
                 onBlur={(e) =>
-                  updateOrder(order.id, {
-                    tracking: e.target.value,
-                  })
+                  updateOrder(order.id, { tracking: e.target.value })
                 }
               />
             </div>
