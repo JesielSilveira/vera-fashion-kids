@@ -1,105 +1,61 @@
 export const dynamic = 'force-dynamic';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import slugify from "slugify";
 
-import { prisma } from "@/lib/prisma"
-import { NextResponse } from "next/server"
-
-export async function GET(req: Request) {
+export async function POST(req: Request) {
   try {
-    const url = new URL(req.url)
-    const slug = url.searchParams.get("slug")
+    const body = await req.json();
 
-    if (!slug) {
-      return NextResponse.json({ error: "Slug é obrigatório" }, { status: 400 })
-    }
+    // 1. Gerar slug seguro
+    const slug = body.slug?.trim() || 
+                 slugify(body.name ?? "produto", { lower: true, strict: true });
 
-    // 🔹 Busca produto pelo slug somente se ativo
-    const product = await prisma.product.findUnique({
-      where: { slug },
-      include: {
-        variations: true,
-        category: true,
-      },
-    })
+    // 2. Criar o produto batendo com o Schema
+    const product = await prisma.product.create({
+      data: {
+        name: body.name,
+        slug: slug,
+        price: Number(body.price),
+        description: body.description,
+        
+        // No seu Schema são campos Json
+        images: body.images || [],
+        sizes: body.sizes || [],
+        colors: body.colors || [],
 
-    if (!product || !product.active) {
-      return NextResponse.json({ error: "Produto não encontrado ou inativo" }, { status: 404 })
-    }
+        // Campos de frete (opcionais no Schema Float?)
+        weight: body.weight ? Number(body.weight) : null,
+        height: body.height ? Number(body.height) : null,
+        width: body.width ? Number(body.width) : null,
+        length: body.length ? Number(body.length) : null,
 
-    // 🔹 Busca reviews relacionadas a esse produto
-    const reviews = await prisma.review.findMany({
-      where: { productId: product.id },
-      orderBy: { createdAt: "desc" },
-    })
+        stock: Number(body.stock ?? 0),
+        active: body.active ?? true,
+        featured: body.featured ?? false,
+        bestSeller: body.bestSeller ?? false,
 
-    // 🔹 Produtos relacionados (mesma categoria, exceto o produto atual, apenas ativos)
-    let relatedProducts: any[] = []
-    if (product.categoryId) {
-      relatedProducts = await prisma.product.findMany({
-        where: {
-          categoryId: product.categoryId,
-          id: { not: product.id },
-          active: true,
-        },
-        take: 6,
-        orderBy: { createdAt: "desc" },
-      })
-    }
+        // Relacionamento com Categoria (String? no seu Schema)
+        categoryId: body.categoryId || null,
 
-    // 🔹 Formata resposta
-    const formatted = {
-      id: product.id,
-      name: product.name,
-      slug: product.slug,
-      price: product.price,
-      description: product.description ?? "",
+        // Variações (Relacionamento Variation[])
+        variations: body.variations ? {
+          create: body.variations.map((v: any) => ({
+            size: v.size,
+            color: v.color,
+            stock: Number(v.stock),
+            priceDiff: Number(v.priceDiff ?? 0)
+          }))
+        } : undefined
+      }
+    });
 
-      images: Array.isArray(product.images) ? product.images : [],
-      sizes: Array.isArray(product.sizes) ? product.sizes : [],
-      colors: Array.isArray(product.colors) ? product.colors : [],
-      stock: product.stock ?? 0,
-
-      weight: product.weight ?? null,
-      height: product.height ?? null,
-      width: product.width ?? null,
-      length: product.length ?? null,
-
-      active: product.active,
-      featured: product.featured,
-      bestSeller: product.bestSeller,
-
-      // 🔹 Variações
-      variations: product.variations.map((v) => ({
-        id: v.id,
-        size: v.size,
-        color: v.color,
-        stock: v.stock,
-        priceDiff: v.priceDiff,
-      })),
-
-      // 🔹 Reviews
-      reviews: reviews.map((r) => ({
-        id: r.id,
-        productId: r.productId,
-        productSlug: product.slug,
-        name: r.name,
-        rating: r.rating,
-        comment: r.comment,
-        createdAt: r.createdAt,
-      })),
-
-      // 🔹 Produtos relacionados
-      relatedProducts: relatedProducts.map((p) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        price: p.price,
-        images: Array.isArray(p.images) ? p.images : [],
-      })),
-    }
-
-    return NextResponse.json(formatted)
-  } catch (err) {
-    console.error("Erro ao buscar produto:", err)
-    return NextResponse.json({ error: "Erro ao buscar produto" }, { status: 500 })
+    return NextResponse.json(product, { status: 201 });
+  } catch (err: any) {
+    console.error("ERRO PRISMA:", err);
+    return NextResponse.json(
+      { error: "Erro ao salvar produto. Verifique se o slug é único." }, 
+      { status: 500 }
+    );
   }
 }

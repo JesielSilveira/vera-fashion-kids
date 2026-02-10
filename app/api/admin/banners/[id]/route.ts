@@ -1,93 +1,37 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+type Context = { params: Promise<{ id: string }> };
 
-/* 🔹 GET */
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
+export async function GET(req: Request, context: Context) {
+  const { id } = await context.params;
+  if (id === "new") return NextResponse.json({ title: "", image: "", active: true });
 
-  try {
-    const banner = await prisma.banner.findUnique({
-      where: { id },
-    })
-
-    if (!banner) {
-      return NextResponse.json(
-        { error: "Banner não encontrado" },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(banner)
-  } catch (err) {
-    console.error(err)
-    return NextResponse.json(
-      { error: "Erro ao carregar banner" },
-      { status: 500 }
-    )
-  }
+  const banner = await prisma.banner.findUnique({ where: { id } });
+  return NextResponse.json(banner || { error: "Não encontrado" }, { status: banner ? 200 : 404 });
 }
 
-/* 🔹 PUT */
-export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
+export async function PUT(req: Request, context: Context) {
+  const { id } = await context.params;
+  const data = await req.json();
 
-  try {
-    const body = await req.json()
-
-    if (!body.title || !body.image) {
-      return NextResponse.json(
-        { error: "Título e imagem são obrigatórios" },
-        { status: 400 }
-      )
+  // Garante que o categoryId exista, senão o Prisma trava
+  const banner = await prisma.banner.update({
+    where: { id },
+    data: {
+      title: data.title,
+      image: data.image,
+      link: data.link,
+      active: data.active,
+      categoryId: data.categoryId // ⚠️ Lembre-se: O Schema exige isso!
     }
-
-    const banner = await prisma.banner.update({
-      where: { id },
-      data: {
-        title: body.title,
-        image: body.image,
-        link: body.link || null,
-        order: typeof body.order === "number" ? body.order : 0,
-        active: Boolean(body.active),
-      },
-    })
-
-    return NextResponse.json(banner)
-  } catch (err) {
-    console.error(err)
-    return NextResponse.json(
-      { error: "Erro ao atualizar banner" },
-      { status: 500 }
-    )
-  }
+  });
+  return NextResponse.json(banner);
 }
 
-/* 🔹 DELETE */
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-
-  try {
-    await prisma.banner.delete({
-      where: { id },
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (err) {
-    console.error(err)
-    return NextResponse.json(
-      { error: "Erro ao deletar banner" },
-      { status: 500 }
-    )
-  }
+export async function DELETE(req: Request, context: Context) {
+  const { id } = await context.params;
+  await prisma.banner.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
 }

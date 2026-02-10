@@ -6,23 +6,22 @@ export default function AboutPage() {
       </h1>
 
       <p className="text-gray-700 text-lg leading-relaxed">
-        A <strong>Vera Fashion Kids</strong> nasceu com o propósito de levar
-        estilo, conforto e qualidade para o dia a dia das crianças.
-        Trabalhamos com peças pensadas para acompanhar cada fase da infância,
-        sempre unindo moda e bem-estar.
+        A <strong>Vera Fashion Kids</strong> ão começou em uma prateleira, mas sim no coração de uma avó apaixonada. 
+        Tudo começou em 2016, com a chegada da minha primeira neta, Isabella. 
+        Ao mergulhar no universo dela, percebi que o mundo precisava de mais magia, de mais brilho e de vestidos que transformassem momentos comuns em contos de fadas.
       </p>
 
       <p className="text-gray-700 text-lg leading-relaxed">
-        Nossa loja é focada em oferecer produtos selecionados com carinho,
-        prezando por tecidos confortáveis, ótimo acabamento e preços justos.
-        Acreditamos que toda criança merece se vestir bem e se sentir livre
-        para brincar, aprender e se expressar.
+        ​A loja cresceu passo a passo com a Isabella. Enquanto ela descobria o mundo,
+         eu descobria minha verdadeira paixão: a moda infantil de festa.
+          O que começou como um desejo de vestir minha neta como uma princesa, 
+          tornou-se o propósito de levar esse encanto para famílias de todo o país.
+          ​Nossa Missão
       </p>
 
       <p className="text-gray-700 text-lg leading-relaxed">
-        Estamos sempre buscando novidades e tendências do universo infantil,
-        sem abrir mão da qualidade e da segurança. Aqui, cada detalhe importa —
-        do atendimento à entrega.
+        Hoje, a Vera Fashion Kids atravessa fronteiras. Queremos espalhar o mundo encantado das festas por todo o Brasil, entregando não apenas vestidos, mas o cenário perfeito para as memórias mais preciosas da infância.
+​"Vestir uma criança para um momento especial é participar da construção de um sonho. É por isso que cada detalhe aqui é escolhido com o amor de quem veste a própria neta." — Vera
       </p>
 
       <div className="border-t pt-6">
