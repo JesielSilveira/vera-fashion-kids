@@ -3,12 +3,12 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// ⚠️ Aqui o `params` precisa ser Promise<{ id: string }>
+type Context = { params: Promise<{ id: string }> };
+
 // GET /api/admin/categories/[id]
-export async function GET(
-  req: NextRequest,
-  context: { params: { id: string } } // ⚠️ objeto direto, sem Promise
-) {
-  const { id } = context.params;
+export async function GET(req: NextRequest, context: Context) {
+  const { id } = await context.params;
   if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
 
   const category = await prisma.category.findUnique({ where: { id } });
@@ -18,11 +18,8 @@ export async function GET(
 }
 
 // PUT /api/admin/categories/[id]
-export async function PUT(
-  req: NextRequest,
-  context: { params: { id: string } } // ⚠️ objeto direto
-) {
-  const { id } = context.params;
+export async function PUT(req: NextRequest, context: Context) {
+  const { id } = await context.params;
   if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
 
   const body = await req.json();
@@ -36,19 +33,13 @@ export async function PUT(
 }
 
 // DELETE /api/admin/categories/[id]
-export async function DELETE(
-  req: NextRequest,
-  context: { params: { id: string } } // ⚠️ objeto direto
-) {
-  const { id } = context.params;
+export async function DELETE(req: NextRequest, context: Context) {
+  const { id } = await context.params;
   if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
 
   const relatedProducts = await prisma.product.count({ where: { categoryId: id } });
   if (relatedProducts > 0) {
-    return NextResponse.json(
-      { error: "Categoria possui produtos relacionados" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Categoria possui produtos relacionados" }, { status: 400 });
   }
 
   await prisma.category.delete({ where: { id } });
