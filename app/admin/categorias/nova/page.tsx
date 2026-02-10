@@ -1,142 +1,91 @@
-"use client"
+import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server"
+import slugify from "slugify"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { makeProductSlug } from "@/lib/slugify"
+/* =========================
+   GET - Listar categorias
+========================= */
+export async function GET() {
+  const categories = await prisma.category.findMany({
+    orderBy: { name: "asc" },
+  })
+  return NextResponse.json(categories)
+}
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+/* =========================
+   POST - Criar categoria
+========================= */
+export async function POST(req: Request) {
+  try {
+    const data = await req.json()
+    const name = data.name?.toString().trim()
+    const slug = data.slug?.toString().trim() || slugify(name ?? "", { lower: true, strict: true })
+    const active = Boolean(data.active)
+    const image = data.image?.toString() || null // base64 da imagem
 
-export default function NewCategoryPage() {
-  const router = useRouter()
-
-  const [name, setName] = useState("")
-  const [slug, setSlug] = useState("")
-  const [active, setActive] = useState(true)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null
-    setImageFile(file)
-
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-    } else {
-      setPreviewUrl(null)
+    if (!name) {
+      return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 })
     }
+
+    const category = await prisma.category.create({
+      data: { name, slug, active, image },
+    })
+
+    return NextResponse.json(category, { status: 201 })
+  } catch (err: any) {
+    console.error("Erro ao criar categoria:", err)
+    return NextResponse.json({ error: err.message || "Erro ao criar categoria" }, { status: 500 })
   }
+}
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
+/* =========================
+   PUT - Atualizar categoria
+========================= */
+export async function PUT(req: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
+  try {
+    const data = await req.json()
+    const name = data.name?.toString().trim()
+    const slug = data.slug?.toString().trim() || slugify(name ?? "", { lower: true, strict: true })
+    const active = Boolean(data.active)
+    const image = data.image?.toString() || undefined // se não tiver, não altera
 
-    try {
-      // Converte a imagem para base64, se houver
-      let base64Image: string | null = null
-      if (imageFile) {
-        base64Image = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsDataURL(imageFile)
-        })
-      }
-
-      const res = await fetch("/api/admin/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          slug: slug.trim() || makeProductSlug(name),
-          active,
-          image: base64Image, // envia base64 direto pro banco
-        }),
-      })
-
-      if (!res.ok) throw new Error("Erro ao criar categoria")
-
-      router.push("/admin/categorias")
-    } catch (err: any) {
-      console.error(err)
-      alert(err.message || "Erro desconhecido")
-    } finally {
-      setLoading(false)
+    if (!name) {
+      return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 })
     }
+
+    const category = await prisma.category.update({
+      where: { id },
+      data: { name, slug, active, ...(image ? { image } : {}) },
+    })
+
+    return NextResponse.json(category)
+  } catch (err: any) {
+    console.error("Erro ao atualizar categoria:", err)
+    return NextResponse.json({ error: err.message || "Erro ao atualizar categoria" }, { status: 500 })
   }
+}
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Nova categoria</h1>
-        <p className="text-muted-foreground">Cadastre uma nova categoria de produtos</p>
-      </div>
+/* =========================
+   DELETE - Excluir categoria
+========================= */
+export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações da categoria</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Nome</Label>
-            <Input
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value)
-                setSlug(makeProductSlug(e.target.value))
-              }}
-              placeholder="Ex: Calçados"
-              required
-            />
-          </div>
+  try {
+    // Verifica se há produtos relacionados
+    const relatedProducts = await prisma.product.count({ where: { categoryId: id } })
+    if (relatedProducts > 0) {
+      return NextResponse.json(
+        { error: "Categoria possui produtos relacionados" },
+        { status: 400 }
+      )
+    }
 
-          <div>
-            <Label>Slug</Label>
-            <Input
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="calcados"
-              required
-            />
-          </div>
-
-          <div>
-            <Label>Imagem da categoria</Label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="mt-1"
-            />
-            {previewUrl && (
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="mt-2 h-40 w-40 object-cover rounded-lg border"
-              />
-            )}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label>Categoria ativa</Label>
-            <Switch checked={active} onCheckedChange={setActive} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex gap-3">
-        <Button type="submit" disabled={loading}>
-          {loading ? "Salvando..." : "Salvar categoria"}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>
-          Cancelar
-        </Button>
-      </div>
-    </form>
-  )
+    await prisma.category.delete({ where: { id } })
+    return NextResponse.json({ ok: true })
+  } catch (err: any) {
+    console.error("Erro ao deletar categoria:", err)
+    return NextResponse.json({ error: err.message || "Erro ao deletar categoria" }, { status: 500 })
+  }
 }
