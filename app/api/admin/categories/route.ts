@@ -6,31 +6,22 @@ import path from "path"
 import { prisma } from "@/lib/prisma"
 import slugify from "slugify"
 
-/* =========================
-   GET - listar categorias
-========================= */
+/* GET */
 export async function GET() {
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-  })
-
+  const categories = await prisma.category.findMany({ orderBy: { name: "asc" } })
   return NextResponse.json(categories)
 }
 
-/* =========================
-   POST - criar categoria
-========================= */
+/* POST */
 export async function POST(req: Request) {
   try {
     const data = await req.formData()
-
     const file = data.get("file") as File | null
     const name = data.get("name") as string
     const active = data.get("active") === "true"
     const slug = (data.get("slug") as string) || slugify(name, { lower: true, strict: true })
 
     let imagePath: string | null = null
-
     if (file) {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
@@ -41,45 +32,29 @@ export async function POST(req: Request) {
     }
 
     const category = await prisma.category.create({
-      data: {
-        name,
-        slug,
-        active,
-        image: imagePath,
-      },
+      data: { name, slug, active, image: imagePath }
     })
 
     return NextResponse.json(category, { status: 201 })
   } catch (err: any) {
     console.error(err)
-    return NextResponse.json(
-      { error: err.message || "Erro no upload" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: err.message || "Erro no upload" }, { status: 500 })
   }
 }
 
-/* =========================
-   PUT - atualizar categoria
-========================= */
-export async function PUT(
-  req: Request,
-  context: { params: Promise<Record<string, string>> }
-) {
-  const allParams = await context.params
-  const id = allParams.id
+/* PUT */
+export async function PUT(req: Request, context: { params: Record<string, string> }) {
+  const id = context.params.id
   if (!id) return new Response("ID é obrigatório", { status: 400 })
 
   try {
     const data = await req.formData()
-
     const file = data.get("file") as File | null
     const name = data.get("name") as string
     const active = data.get("active") === "true"
     const slug = (data.get("slug") as string) || slugify(name, { lower: true, strict: true })
 
     let imagePath: string | null = null
-
     if (file) {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
@@ -91,28 +66,19 @@ export async function PUT(
 
     const category = await prisma.category.update({
       where: { id },
-      data: { name, slug, active, ...(imagePath ? { image: imagePath } : {}) },
+      data: { name, slug, active, ...(imagePath ? { image: imagePath } : {}) }
     })
 
     return NextResponse.json(category)
   } catch (err: any) {
     console.error(err)
-    return NextResponse.json(
-      { error: err.message || "Erro ao atualizar categoria" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: err.message || "Erro ao atualizar categoria" }, { status: 500 })
   }
 }
 
-/* =========================
-   DELETE - excluir categoria
-========================= */
-export async function DELETE(
-  req: Request,
-  context: { params: Promise<Record<string, string>> }
-) {
-  const allParams = await context.params
-  const id = allParams.id
+/* DELETE */
+export async function DELETE(req: Request, context: { params: Record<string, string> }) {
+  const id = context.params.id
   if (!id) return new Response("ID é obrigatório", { status: 400 })
 
   try {
@@ -125,9 +91,6 @@ export async function DELETE(
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     console.error(err)
-    return NextResponse.json(
-      { error: err.message || "Erro ao deletar categoria" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: err.message || "Erro ao deletar categoria" }, { status: 500 })
   }
 }
