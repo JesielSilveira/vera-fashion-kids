@@ -11,13 +11,8 @@ export async function GET(req: Request, context: Context) {
     const { id } = await context.params;
 
     // ✅ TRATATIVA PARA O FRONT-END "NOVA"
-    if (id === "nova" || id === "new" || id === "undefined") {
-      return NextResponse.json({
-        name: "",
-        slug: "",
-        active: true,
-        image: ""
-      });
+ if (id === "nova" || id === "novo" || id === "new") {
+    return NextResponse.json({ name: "", slug: "", active: true });
     }
 
     const category = await prisma.category.findUnique({

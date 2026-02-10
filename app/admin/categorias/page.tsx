@@ -76,7 +76,7 @@ export default function AdminCategoriesPage() {
           <p className="text-muted-foreground">Gerencie as categorias da loja</p>
         </div>
         <Button asChild>
-          <Link href="/admin/categorias/novo">Nova Categoria</Link>
+          <Link href="/admin/categorias/nova">Nova Categoria</Link>
         </Button>
       </div>
 
