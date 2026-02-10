@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { makeProductSlug } from "@/lib/slugify"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,173 +10,120 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-type Category = {
-  id: string
-  name: string
-  active: boolean
-}
-
-export default function NewBannerPage() {
+export default function NewCategoryPage() {
   const router = useRouter()
-  const [title, setTitle] = useState("")
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
-  const [order, setOrder] = useState(0)
+
+  const [name, setName] = useState("")
+  const [slug, setSlug] = useState("")
   const [active, setActive] = useState(true)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const [categories, setCategories] = useState<Category[]>([])
-  const [selectedCategory, setSelectedCategory] = useState("")
-
-  // =========================
-  // CARREGA CATEGORIAS ATIVAS
-  // =========================
-  useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await fetch("/api/admin/categories")
-        if (!res.ok) throw new Error("Falha ao buscar categorias")
-
-        const data: Category[] = await res.json()
-        setCategories(data.filter(c => c.active))
-      } catch (err) {
-        console.error(err)
-        alert("Erro ao carregar categorias")
-      }
-    }
-    fetchCategories()
-  }, [])
-
-  // =========================
-  // LIMPA PREVIEW AO DESCARTE OU NOVA IMAGEM
-  // =========================
-  useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview)
-    }
-  }, [preview])
-
-  // =========================
-  // SELEÇÃO DE ARQUIVO
-  // =========================
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null
-    if (!f) return
+    const file = e.target.files?.[0] ?? null
+    setImageFile(file)
 
-    if (preview) URL.revokeObjectURL(preview)
-    setFile(f)
-    setPreview(URL.createObjectURL(f))
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+    } else {
+      setPreviewUrl(null)
+    }
   }
 
-  // =========================
-  // SUBMIT
-  // =========================
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title || !file || !selectedCategory) {
-      return alert("Preencha todos os campos")
-    }
-
     setLoading(true)
-    try {
-      // Upload da imagem
-      const formData = new FormData()
-      formData.append("file", file)
 
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData })
-      let uploadData: { url?: string } = {}
-      try {
-        uploadData = await uploadRes.json()
-      } catch {
-        throw new Error("Falha no upload da imagem")
+    try {
+      // Converte a imagem para base64, se houver
+      let base64Image: string | null = null
+      if (imageFile) {
+        base64Image = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(imageFile)
+        })
       }
 
-      if (!uploadData.url) throw new Error("Falha no upload da imagem")
-
-      // Criar banner
-      const res = await fetch("/api/admin/banners", {
+      const res = await fetch("/api/admin/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
-          image: uploadData.url,
-          categoryId: selectedCategory,
-          order,
+          name: name.trim(),
+          slug: slug.trim() || makeProductSlug(name),
           active,
+          image: base64Image, // envia base64 direto pro banco
         }),
       })
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.message || "Erro ao criar banner")
-      }
+      if (!res.ok) throw new Error("Erro ao criar categoria")
 
-      router.push("/admin/banners")
+      router.push("/admin/categorias")
     } catch (err: any) {
       console.error(err)
-      alert(err?.message || "Erro ao criar banner")
+      alert(err.message || "Erro desconhecido")
     } finally {
       setLoading(false)
     }
   }
 
-  // =========================
-  // UI
-  // =========================
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h1 className="text-3xl font-bold">Novo banner</h1>
+      <div>
+        <h1 className="text-3xl font-bold">Nova categoria</h1>
+        <p className="text-muted-foreground">Cadastre uma nova categoria de produtos</p>
+      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Informações</CardTitle>
+          <CardTitle>Informações da categoria</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Título</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
+            <Label>Nome</Label>
+            <Input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                setSlug(makeProductSlug(e.target.value))
+              }}
+              placeholder="Ex: Calçados"
+              required
+            />
           </div>
 
           <div>
-            <Label>Imagem</Label>
-            <Input type="file" accept="image/*" onChange={handleFileChange} required />
-            {preview && (
+            <Label>Slug</Label>
+            <Input
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="calcados"
+              required
+            />
+          </div>
+
+          <div>
+            <Label>Imagem da categoria</Label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="mt-1"
+            />
+            {previewUrl && (
               <img
-                src={preview}
+                src={previewUrl}
                 alt="Preview"
-                className="mt-3 h-40 w-full object-cover rounded-md border"
+                className="mt-2 h-40 w-40 object-cover rounded-lg border"
               />
             )}
           </div>
 
-          <div>
-            <Label>Categoria</Label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full rounded-md border px-3 py-2"
-              required
-            >
-              <option value="">Selecione uma categoria</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="max-w-xs">
-            <Label>Ordem</Label>
-            <Input
-              type="number"
-              value={order}
-              onChange={(e) => setOrder(Number(e.target.value) || 0)}
-            />
-          </div>
-
-          <div className="flex justify-between items-center">
-            <Label>Ativo</Label>
+          <div className="flex items-center justify-between">
+            <Label>Categoria ativa</Label>
             <Switch checked={active} onCheckedChange={setActive} />
           </div>
         </CardContent>
@@ -183,9 +131,9 @@ export default function NewBannerPage() {
 
       <div className="flex gap-3">
         <Button type="submit" disabled={loading}>
-          {loading ? "Salvando..." : "Salvar banner"}
+          {loading ? "Salvando..." : "Salvar categoria"}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
+        <Button type="button" variant="outline" onClick={() => router.back()}>
           Cancelar
         </Button>
       </div>
