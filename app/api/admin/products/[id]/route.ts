@@ -1,14 +1,14 @@
 import { prisma } from "@/lib/prisma"
-import { NextResponse, NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 export const dynamic = 'force-dynamic'
 
-// Tipagem correta do Next 16 App Router
-type Params = { id: string }
-
-// GET - pegar produto pelo id
-export async function GET(req: NextRequest, { params }: { params: Params }) {
-  const { id } = params
+// GET
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params // ⚠️ await aqui
 
   const product = await prisma.product.findUnique({
     where: { id },
@@ -22,9 +22,12 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
   return NextResponse.json(product)
 }
 
-// PUT - atualizar produto
-export async function PUT(req: NextRequest, { params }: { params: Params }) {
-  const { id } = params
+// PUT
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params
   const body = await req.json()
 
   try {
@@ -72,9 +75,12 @@ export async function PUT(req: NextRequest, { params }: { params: Params }) {
   }
 }
 
-// DELETE - deletar produto
-export async function DELETE(req: NextRequest, { params }: { params: Params }) {
-  const { id } = params
+// DELETE
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params
 
   try {
     await prisma.product.delete({ where: { id } })
