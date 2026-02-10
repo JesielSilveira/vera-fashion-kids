@@ -1,12 +1,12 @@
-export const dynamic = 'force-dynamic';
-
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 
-type Ctx = { params: { id: string } }
+export const dynamic = 'force-dynamic';
 
-export async function GET(req: Request, ctx: Ctx) {
-  const { id } = ctx.params
+type Params = { id: string } // id da rota /[id]
+
+export async function GET(req: Request, { params }: { params: Params }) {
+  const { id } = params
 
   const product = await prisma.product.findUnique({
     where: { id },
@@ -22,8 +22,8 @@ export async function GET(req: Request, ctx: Ctx) {
   return NextResponse.json(product)
 }
 
-export async function PUT(req: Request, ctx: Ctx) {
-  const { id } = ctx.params
+export async function PUT(req: Request, { params }: { params: Params }) {
+  const { id } = params
   const body = await req.json()
 
   try {
@@ -51,7 +51,6 @@ export async function PUT(req: Request, ctx: Ctx) {
 
         categoryId: body.categoryId ?? null,
 
-        // 🔹 Atualiza variações: remove antigas e cria novas
         variations: Array.isArray(body.variations)
           ? {
               deleteMany: {},
@@ -79,8 +78,8 @@ export async function PUT(req: Request, ctx: Ctx) {
   }
 }
 
-export async function DELETE(req: Request, ctx: Ctx) {
-  const { id } = ctx.params
+export async function DELETE(req: Request, { params }: { params: Params }) {
+  const { id } = params
 
   try {
     await prisma.product.delete({ where: { id } })
