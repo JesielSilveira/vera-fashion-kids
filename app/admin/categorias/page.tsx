@@ -1,9 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { prisma } from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -15,10 +14,42 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 
-export default function AdminCategoriesPage({ categories }: { categories: any[] }) {
-  const router = useRouter()
-  const [loadingIds, setLoadingIds] = useState<string[]>([])
+type Category = {
+  id: string
+  name: string
+  slug: string
+  active: boolean
+}
 
+export default function AdminCategoriesPage() {
+  const router = useRouter()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loadingIds, setLoadingIds] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // =========================
+  // Busca categorias do servidor
+  // =========================
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/admin/categories")
+        if (!res.ok) throw new Error("Erro ao carregar categorias")
+        const data: Category[] = await res.json()
+        setCategories(data ?? [])
+      } catch (err) {
+        console.error(err)
+        alert("Erro ao carregar categorias")
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadCategories()
+  }, [])
+
+  // =========================
+  // DELETE categoria
+  // =========================
   async function handleDelete(id: string) {
     if (!confirm("Deseja realmente excluir esta categoria?")) return
     setLoadingIds((prev) => [...prev, id])
@@ -26,15 +57,16 @@ export default function AdminCategoriesPage({ categories }: { categories: any[] 
     try {
       const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" })
       const data = await res.json()
-
       if (!res.ok) throw new Error(data.error || "Erro ao deletar categoria")
-      router.refresh() // 🔹 atualiza a lista sem reload
+      setCategories((prev) => prev.filter((c) => c.id !== id))
     } catch (err: any) {
       alert(err.message || "Erro desconhecido")
     } finally {
       setLoadingIds((prev) => prev.filter((i) => i !== id))
     }
   }
+
+  if (loading) return <p>Carregando categorias...</p>
 
   return (
     <div className="space-y-6">
@@ -70,11 +102,7 @@ export default function AdminCategoriesPage({ categories }: { categories: any[] 
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    asChild
-                  >
+                  <Button variant="ghost" size="icon" asChild>
                     <Link href={`/admin/categorias/${cat.id}`}>✏️</Link>
                   </Button>
                   <Button
