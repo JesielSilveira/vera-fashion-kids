@@ -5,21 +5,29 @@ import { prisma } from "@/lib/prisma";
 type Context = { params: Promise<{ id: string }> };
 
 // GET /api/admin/categories/[id]
-export async function GET(req: Request, context: Context) {
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
 
-  // Se for "new", retorna um objeto limpo para o formulário não quebrar
-  if (id === "new") {
-    return NextResponse.json({ name: "", slug: "", active: true });
+  // ✅ Se a pasta no front é /admin/categorias/nova, o id aqui será "nova"
+  if (id === "nova" || id === "new") {
+    return NextResponse.json({ 
+      name: "", 
+      slug: "", 
+      active: true 
+    });
   }
 
-  const category = await prisma.category.findUnique({ where: { id } });
-  
-  if (!category) {
-    return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 });
-  }
+  try {
+    const category = await prisma.category.findUnique({ where: { id } });
+    
+    if (!category) {
+      return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 });
+    }
 
-  return NextResponse.json(category);
+    return NextResponse.json(category);
+  } catch (err) {
+    return NextResponse.json({ error: "Erro no servidor" }, { status: 500 });
+  }
 }
 
 // PUT /api/admin/categories/[id]
