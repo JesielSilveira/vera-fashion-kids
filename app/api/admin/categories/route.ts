@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const file = data.get("file") as File | null
     const name = data.get("name") as string
     const active = data.get("active") === "true"
-    let slug = (data.get("slug") as string) || slugify(name, { lower: true, strict: true })
+    const slug = (data.get("slug") as string) || slugify(name, { lower: true, strict: true })
 
     let imagePath: string | null = null
 
@@ -62,15 +62,21 @@ export async function POST(req: Request) {
 /* =========================
    PUT - atualizar categoria
 ========================= */
-export async function PUT(req: Request, context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params
+export async function PUT(
+  req: Request,
+  context: { params: Promise<Record<string, string>> }
+) {
+  const allParams = await context.params
+  const id = allParams.id
+  if (!id) return new Response("ID é obrigatório", { status: 400 })
+
   try {
     const data = await req.formData()
 
     const file = data.get("file") as File | null
     const name = data.get("name") as string
     const active = data.get("active") === "true"
-    let slug = (data.get("slug") as string) || slugify(name, { lower: true, strict: true })
+    const slug = (data.get("slug") as string) || slugify(name, { lower: true, strict: true })
 
     let imagePath: string | null = null
 
@@ -101,11 +107,15 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
 /* =========================
    DELETE - excluir categoria
 ========================= */
-export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<Record<string, string>> }
+) {
+  const allParams = await context.params
+  const id = allParams.id
+  if (!id) return new Response("ID é obrigatório", { status: 400 })
 
   try {
-    // 🔹 Se houver produtos relacionados, opcional: deletar produtos ou impedir exclusão
     const relatedProducts = await prisma.product.count({ where: { categoryId: id } })
     if (relatedProducts > 0) {
       return NextResponse.json({ error: "Categoria possui produtos relacionados" }, { status: 400 })
