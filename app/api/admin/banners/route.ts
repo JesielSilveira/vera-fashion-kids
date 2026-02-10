@@ -1,8 +1,9 @@
-export const dynamic = 'force-dynamic';
-
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = "force-dynamic"
+
+// --- LISTAR BANNERS (GET) ---
 export async function GET(req: NextRequest) {
   try {
     const banners = await prisma.banner.findMany({
@@ -10,48 +11,51 @@ export async function GET(req: NextRequest) {
       include: { category: true },
     })
 
+    // O map garante que se algum campo estiver nulo no banco, o código não quebre
     const formatted = banners.map(b => ({
       id: b.id,
-      title: b.title,
-      image: b.image,
-      link: b.link ?? null,
-      order: b.order,
-      active: b.active,
+      title: b.title || "Sem título",
+      image: b.image || "",
+      link: b.link || null,
+      order: b.order || 0,
+      active: b.active ?? true,
       categoryId: b.categoryId,
-      categorySlug: b.category?.slug ?? null,
+      categoryName: b.category?.name || "Sem categoria",
     }))
 
     return NextResponse.json(formatted)
-  } catch (err) {
-    console.error(err)
-    return NextResponse.json({ error: "Erro ao listar banners" }, { status: 500 })
+  } catch (err: any) {
+    console.error("Erro no GET Banners:", err)
+    return NextResponse.json({ error: "Erro ao buscar banners" }, { status: 500 })
   }
 }
 
-export async function POST(req: Request) {
+// --- CRIAR BANNER (POST) ---
+export async function POST(req: NextRequest) {
   try {
-    const body = await req.json(); // Use JSON, é mais leve que FormData
-    console.log("Recebido:", body);
+    const body = await req.json()
+    const { title, image, categoryId, order, active } = body
 
-    const { title, image, categoryId, order, active } = body;
-
-    if (!image.startsWith('http')) {
-       return NextResponse.json({ error: "Por favor, use um link (URL) da imagem" }, { status: 400 });
+    if (!title || !image || !categoryId) {
+      return NextResponse.json(
+        { error: "Dados obrigatórios faltando" },
+        { status: 400 }
+      )
     }
 
     const banner = await prisma.banner.create({
       data: {
         title,
-        image, // Aqui vai o link: https://site.com/foto.jpg
+        image, // Aqui agora estamos esperando o LINK da imagem
         categoryId,
-        order: Number(order || 0),
+        order: Number(order) || 0,
         active: active ?? true,
       },
-    });
+    })
 
-    return NextResponse.json(banner, { status: 201 });
-  } catch (err) {
-    console.error("ERRO NO BANNER:", err);
-    return NextResponse.json({ error: "Erro ao salvar banner no banco" }, { status: 500 });
+    return NextResponse.json(banner, { status: 201 })
+  } catch (err: any) {
+    console.error("Erro no POST Banners:", err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
