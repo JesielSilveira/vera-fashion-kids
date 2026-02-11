@@ -4,29 +4,45 @@ import { prisma } from "@/lib/prisma"
 export const dynamic = "force-dynamic"
 
 // --- LISTAR BANNERS (GET) ---
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const banners = await prisma.banner.findMany({
+      where: { active: true },
       orderBy: { order: "asc" },
-      include: { category: true },
+      select: {
+        id: true,
+        title: true,
+        image: true,
+        link: true,
+        order: true,
+        active: true,
+        categoryId: true,
+        category: {
+          select: { name: true },
+        },
+      },
     })
 
-    // O map garante que se algum campo estiver nulo no banco, o código não quebre
-    const formatted = banners.map(b => ({
-      id: b.id,
-      title: b.title || "Sem título",
-      image: b.image || "",
-      link: b.link || null,
-      order: b.order || 0,
-      active: b.active ?? true,
-      categoryId: b.categoryId,
-      categoryName: b.category?.name || "Sem categoria",
-    }))
+    const formatted = banners
+      .filter(b => !!b.image) // evita banner sem imagem
+      .map(b => ({
+        id: b.id,
+        title: b.title || "Sem título",
+        image: b.image,
+        link: b.link && b.link.trim().length > 0 ? b.link : null,
+        order: b.order ?? 0,
+        active: b.active ?? true,
+        categoryId: b.categoryId,
+        categoryName: b.category?.name || "Sem categoria",
+      }))
 
     return NextResponse.json(formatted)
-  } catch (err: any) {
-    console.error("Erro no GET Banners:", err)
-    return NextResponse.json({ error: "Erro ao buscar banners" }, { status: 500 })
+  } catch (err) {
+    console.error("Erro no GET /api/banners:", err)
+    return NextResponse.json(
+      { error: "Erro ao buscar banners" },
+      { status: 500 }
+    )
   }
 }
 
@@ -34,19 +50,20 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { title, image, categoryId, order, active } = body
+    const { title, image, categoryId, order, active, link } = body
 
     if (!title || !image || !categoryId) {
       return NextResponse.json(
-        { error: "Dados obrigatórios faltando" },
+        { error: "Título, imagem e categoria são obrigatórios" },
         { status: 400 }
       )
     }
 
     const banner = await prisma.banner.create({
       data: {
-        title,
-        image, // Aqui agora estamos esperando o LINK da imagem
+        title: title.trim(),
+        image: image.trim(), // URL do Cloudinary
+        link: link?.trim() || null,
         categoryId,
         order: Number(order) || 0,
         active: active ?? true,
@@ -55,7 +72,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(banner, { status: 201 })
   } catch (err: any) {
-    console.error("Erro no POST Banners:", err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    console.error("Erro no POST /api/banners:", err)
+    return NextResponse.json(
+      { error: err.message || "Erro ao criar banner" },
+      { status: 500 }
+    )
   }
 }

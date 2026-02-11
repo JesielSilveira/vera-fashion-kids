@@ -1,4 +1,5 @@
 "use client"
+
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
@@ -48,13 +49,13 @@ export function BannerCarousel() {
       >
         <CarouselContent>
           {banners.map((banner) => {
-            // 🔒 LINK SEGURO
+            // 🔗 LINK SEGURO
             const href =
               banner.link && banner.link.trim().length > 0
                 ? banner.link
                 : "/"
 
-            // 🖼️ IMAGEM SEGURA
+            // 🖼️ IMAGEM SEGURA (Cloudinary ou local)
             const imageSrc =
               banner.image.startsWith("http") || banner.image.startsWith("/")
                 ? banner.image
@@ -75,9 +76,9 @@ export function BannerCarousel() {
                       src={imageSrc}
                       alt={banner.title}
                       fill
+                      priority
                       sizes="100vw"
                       style={{ objectFit: "cover" }}
-                      priority
                     />
 
                     {/* Overlay (não bloqueia clique) */}
@@ -96,8 +97,9 @@ export function BannerCarousel() {
           })}
         </CarouselContent>
 
-        <CarouselPrevious className="left-3" />
-        <CarouselNext className="right-3" />
+        {/* Navegação */}
+        <CarouselPrevious className="left-3 z-10" />
+        <CarouselNext className="right-3 z-10" />
       </Carousel>
     </section>
   )

@@ -9,22 +9,22 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Definindo uma interface simples para evitar o erro de tipo no map/filter
 interface Category {
-  id: string;
-  name: string;
-  active: boolean;
+  id: string
+  name: string
+  active: boolean
 }
 
 export default function NewBannerPage() {
   const router = useRouter()
 
   const [title, setTitle] = useState("")
-  const [imageUrl, setImageUrl] = useState("") 
+  const [imageUrl, setImageUrl] = useState("")
+  const [link, setLink] = useState("")
   const [order, setOrder] = useState(0)
   const [active, setActive] = useState(true)
   const [loading, setLoading] = useState(false)
-  const [categories, setCategories] = useState<Category[]>([]) // Tipado aqui
+  const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState("")
 
   useEffect(() => {
@@ -33,8 +33,6 @@ export default function NewBannerPage() {
         const res = await fetch("/api/admin/categories")
         if (!res.ok) throw new Error("Falha ao buscar categorias")
         const data = await res.json()
-        
-        // Garantimos que 'data' é um array antes de filtrar
         if (Array.isArray(data)) {
           setCategories(data.filter((c: Category) => c.active))
         }
@@ -47,8 +45,13 @@ export default function NewBannerPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title || !imageUrl || !selectedCategory) {
+
+    if (!title.trim() || !imageUrl.trim() || !selectedCategory) {
       return alert("Preencha todos os campos obrigatórios!")
+    }
+
+    if (!imageUrl.startsWith("http")) {
+      return alert("A imagem precisa ser uma URL válida (Cloudinary).")
     }
 
     setLoading(true)
@@ -57,22 +60,21 @@ export default function NewBannerPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
-          image: imageUrl,
+          title: title.trim(),
+          image: imageUrl.trim(),
+          link: link.trim() || null,
           categoryId: selectedCategory,
-          order: Number(order),
+          order: Number(order) || 0,
           active,
         }),
       })
 
       const result = await res.json()
-
       if (!res.ok) {
         throw new Error(result.error || "Erro ao criar banner")
       }
 
       router.push("/admin/banners")
-      router.refresh() // Força a atualização dos dados na tela de listagem
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -84,7 +86,7 @@ export default function NewBannerPage() {
     <div className="p-6">
       <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
         <h1 className="text-3xl font-bold">Novo Banner</h1>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Configurações do Banner</CardTitle>
@@ -92,64 +94,68 @@ export default function NewBannerPage() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="title">Título do Banner</Label>
-              <Input 
+              <Input
                 id="title"
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
-                placeholder="Ex: Coleção Outono 2024" 
-                required 
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ex: Coleção Outono 2024"
+                required
               />
             </div>
 
             <div>
-              <Label htmlFor="image">URL da Imagem</Label>
-              <Input 
+              <Label htmlFor="image">URL da Imagem (Cloudinary)</Label>
+              <Input
                 id="image"
-                value={imageUrl} 
-                onChange={(e) => setImageUrl(e.target.value)} 
-                placeholder="https://link-da-imagem.jpg" 
-                required 
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://res.cloudinary.com/..."
+                required
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Suba a imagem no Gerenciador de Arquivos da Hostinger e cole o link aqui.
-              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="link">Link do Banner (opcional)</Label>
+              <Input
+                id="link"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="/categoria/promocoes"
+              />
             </div>
 
             <div>
               <Label htmlFor="category">Categoria</Label>
-              <select 
+              <select
                 id="category"
-                value={selectedCategory} 
+                value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full h-10 rounded-md border px-3 text-sm"
                 required
               >
                 <option value="">Selecione uma categoria...</option>
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="order">Ordem de Exibição</Label>
-                <Input 
+                <Label htmlFor="order">Ordem</Label>
+                <Input
                   id="order"
-                  type="number" 
-                  value={order} 
-                  onChange={(e) => setOrder(parseInt(e.target.value) || 0)} 
+                  type="number"
+                  value={order}
+                  onChange={(e) => setOrder(Number(e.target.value) || 0)}
                 />
               </div>
+
               <div className="flex flex-col space-y-2">
-                <Label htmlFor="active">Banner Ativo?</Label>
-                <div className="flex items-center h-10">
-                  <Switch 
-                    id="active"
-                    checked={active} 
-                    onCheckedChange={setActive} 
-                  />
-                </div>
+                <Label>Banner Ativo?</Label>
+                <Switch checked={active} onCheckedChange={setActive} />
               </div>
             </div>
           </CardContent>
