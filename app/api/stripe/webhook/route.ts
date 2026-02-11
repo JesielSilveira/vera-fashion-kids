@@ -25,41 +25,38 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as any;
-
-    // 1. RECUPERANDO OS DADOS DO METADATA
-    const userId = session.metadata?.userId;
-    const address = session.metadata?.address || "Endereço não informado";
     
-    // Transformamos a string de produtos de volta em um array de objetos
+    // Extraindo dados do metadata que enviamos no checkout
+    const userId = session.metadata?.userId;
+    const address = session.metadata?.address || "Endereço via Stripe";
     const productData = JSON.parse(session.metadata?.productData || "[]");
 
     try {
-      // 2. CRIANDO O PEDIDO NO BANCO
+      // Criando o pedido com as relações CORRETAS
       const newOrder = await prisma.order.create({
         data: {
-          userId: userId, // ✅ Resolve o erro de Foreign Key do usuário
+          userId: userId, // ✅ Preenche o userId (Screenshot 56)
           stripeSessionId: session.id,
           total: session.amount_total / 100,
           status: "PAID",
           shippingAddress: address,
           items: {
-            // Criamos múltiplos itens baseados no que veio do checkout
             create: productData.map((item: any) => ({
-              productId: item.id, // ✅ Resolve o erro de Foreign Key do produto
+              productId: item.id, // ✅ Preenche o productId (Screenshot 57)
               quantity: item.q,
               price: item.p,
-              name: "Produto Adquirido" // Você pode passar o nome no metadata se quiser
+              name: "Produto Comprado" 
             }))
           }
         }
       });
 
-      console.log("✅ SUCESSO: Pedido", newOrder.id, "atribuído ao usuário", userId);
-      return NextResponse.json({ created: true, orderId: newOrder.id });
+      console.log("✅ PEDIDO CRIADO COM SUCESSO:", newOrder.id);
+      return NextResponse.json({ created: true });
 
     } catch (dbError: any) {
-      console.error("❌ ERRO NO PRISMA:", dbError.message);
-      return new NextResponse(`Erro Prisma: ${dbError.message}`, { status: 500 });
+      console.error("❌ ERRO NO PRISMA AO SALVAR:", dbError.message);
+      return new NextResponse(`Erro Banco: ${dbError.message}`, { status: 500 });
     }
   }
 
