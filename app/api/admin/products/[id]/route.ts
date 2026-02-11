@@ -1,15 +1,20 @@
 import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
-import slugify from "slugify"
 
 export const dynamic = 'force-dynamic'
 
-// GET - Busca o produto com variações
+// Definimos o tipo de acordo com a nova exigência do Next.js 15
+type Context = {
+  params: Promise<{ id: string }>
+}
+
+// GET
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: Context
 ) {
-  const { id } = params
+  // ✅ CORREÇÃO: Await nos params
+  const { id } = await context.params
 
   try {
     const product = await prisma.product.findUnique({
@@ -22,70 +27,49 @@ export async function GET(
     }
 
     return NextResponse.json(product)
-  } catch (err) {
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+  } catch (err: any) {
+    return NextResponse.json({ error: "Erro ao buscar produto" }, { status: 500 })
   }
 }
 
-// PUT - Atualiza o produto e sincroniza variações
+// PUT
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: Context
 ) {
-  const { id } = params
+  // ✅ CORREÇÃO: Await nos params
+  const { id } = await context.params
   const body = await req.json()
 
   try {
-    // 1️⃣ Validar se o novo slug já existe em OUTRO produto
-    let slug = body.slug || slugify(body.name, { lower: true, strict: true })
-    const slugConflict = await prisma.product.findFirst({
-      where: { 
-        slug,
-        id: { not: id } // Garante que não é o próprio produto sendo editado
-      }
-    })
-
-    if (slugConflict) {
-      slug = `${slug}-${Math.random().toString(36).substring(2, 5)}`
-    }
-
-    // 2️⃣ Atualizar Produto e Variações
     const product = await prisma.product.update({
       where: { id },
       data: {
         name: body.name,
-        slug,
+        slug: body.slug,
         price: Number(body.price),
         description: body.description ?? "",
-        images: body.images || [], // Agora recebe as URLs do Cloudinary
-        
-        // Dimensões do Produto Pai
+        images: Array.isArray(body.images) ? body.images : [],
+        stock: Number(body.stock ?? 0),
+        active: body.active ?? true,
+        featured: body.featured ?? false,
+        bestSeller: body.bestSeller ?? false,
         weight: body.weight != null ? Number(body.weight) : null,
         height: body.height != null ? Number(body.height) : null,
         width: body.width != null ? Number(body.width) : null,
         length: body.length != null ? Number(body.length) : null,
-        
-        active: Boolean(body.active),
-        featured: Boolean(body.featured),
-        bestSeller: Boolean(body.bestSeller),
-        
-        category: body.categoryId 
-          ? { connect: { id: body.categoryId } } 
-          : { disconnect: true },
-
-        // 🔄 Sincronização de Variações
-        variations: {
-          deleteMany: {}, // Limpa as antigas
-          create: Array.isArray(body.variations) 
-            ? body.variations.map((v: any) => ({
-                size: v.size || null,
-                color: v.color || null,
-                sku: v.sku || null,
+        categoryId: body.categoryId ?? null,
+        variations: Array.isArray(body.variations)
+          ? {
+              deleteMany: {},
+              create: body.variations.map((v: any) => ({
+                size: v.size ?? null,
+                color: v.color ?? null,
                 stock: Number(v.stock ?? 0),
                 priceDiff: Number(v.priceDiff ?? 0),
-              }))
-            : [],
-        },
+              })),
+            }
+          : undefined,
       },
       include: { variations: true },
     })
@@ -94,21 +78,22 @@ export async function PUT(
   } catch (err: any) {
     console.error("Erro ao atualizar produto:", err)
     return NextResponse.json(
-      { error: err.message || "Erro ao salvar alterações" },
+      { error: err.message || "Erro no servidor" },
       { status: 500 }
     )
   }
 }
 
-// DELETE - Remove produto e dependências
+// DELETE
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: Context
 ) {
-  const { id } = params
+  // ✅ CORREÇÃO: Await nos params
+  const { id } = await context.params
 
   try {
-    // Se o seu schema não tiver "onDelete: Cascade", deletamos manualmente:
+    // 🔹 Deleta dependências primeiro (ou use onDelete: Cascade no schema)
     await prisma.$transaction([
       prisma.variation.deleteMany({ where: { productId: id } }),
       prisma.review.deleteMany({ where: { productId: id } }),
@@ -118,6 +103,9 @@ export async function DELETE(
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     console.error("Erro ao deletar produto:", err)
-    return NextResponse.json({ error: "Erro ao deletar" }, { status: 500 })
+    return NextResponse.json(
+      { error: err.message || "Erro ao deletar" },
+      { status: 500 }
+    )
   }
 }
