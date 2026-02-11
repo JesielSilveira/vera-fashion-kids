@@ -5,9 +5,9 @@ import { getToken } from "next-auth/jwt"
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // ✅ 0. LIBERAÇÃO CRÍTICA: Ignorar o Webhook do Stripe
-  // O Stripe não envia token, por isso ele SEMPRE seria bloqueado se caísse em qualquer regra.
-  if (pathname.startsWith("/api/webhooks")) {
+  // ✅ 0. LIBERAÇÃO PÚBLICA (Sem Token)
+  // Liberamos o Webhook (Stripe) e a rota de Check (Página de Sucesso)
+  if (pathname.startsWith("/api/webhooks") || pathname === "/api/orders/check") {
     return NextResponse.next()
   }
 
@@ -16,11 +16,9 @@ export async function middleware(req: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   })
 
-  // 1. Proteger rotas de ADMIN (Páginas e APIs)
+  // 1. Proteger rotas de ADMIN
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    
     if (!token) {
-      console.log("🚫 Bloqueio: Sem token em", pathname)
       if (pathname.startsWith("/api")) {
         return new NextResponse(JSON.stringify({ error: "Não autorizado" }), { status: 401 })
       }
@@ -29,7 +27,6 @@ export async function middleware(req: NextRequest) {
 
     const userRole = String(token.role || "").toLowerCase()
     if (userRole !== "admin") {
-      console.log("🚫 Bloqueio: Role insuficiente:", userRole)
       if (pathname.startsWith("/api")) {
         return new NextResponse(JSON.stringify({ error: "Acesso negado" }), { status: 403 })
       }
@@ -52,6 +49,7 @@ export const config = {
     "/checkout/:path*", 
     "/admin/:path*", 
     "/api/admin/:path*",
-    "/api/webhooks/:path*" // ✅ Adicionamos aqui para o middleware saber que ele deve olhar essa rota (e liberar no if acima)
+    "/api/webhooks/:path*",
+    "/api/orders/check" // ✅ Adicionado para ser processado pelo Middleware
   ],
 }
