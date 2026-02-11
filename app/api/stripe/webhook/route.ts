@@ -12,7 +12,6 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
 
-  // 1. Validação da Assinatura do Stripe
   try {
     event = stripe.webhooks.constructEvent(
       body,
@@ -24,37 +23,38 @@ export async function POST(req: Request) {
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
-  // 2. Processamento do Evento
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as any;
 
+    // 1. PEGANDO OS DADOS DO METADATA (O que enviamos no Checkout)
+    const userId = session.metadata?.userId;
+    const address = session.metadata?.address || "Endereço via Stripe";
+
     try {
-      // Usamos await dentro de um try/catch específico para o banco
+      // 2. CRIANDO O PEDIDO VINCULADO AO USUÁRIO
       const newOrder = await prisma.order.create({
         data: {
+          userId: userId, // 🔥 Agora o pedido tem o ID do dono!
           stripeSessionId: session.id,
           total: session.amount_total / 100,
           status: "PAID",
-          shippingAddress: "Endereço via Stripe",
+          shippingAddress: address,
           items: {
             create: [{
-              name: "Produto Vendido",
+              name: "Produto Vendido", // Depois você pode mapear os itens reais do metadata aqui
               quantity: 1,
               price: session.amount_total / 100,
-              // Se o seu modelo exigir productId, coloque um ID fixo de teste aqui
-              // productId: "ID_DE_UM_PRODUTO_EXISTENTE" 
             }]
           }
         }
       });
 
-      console.log("✅ PEDIDO SALVO NO BANCO! ID:", newOrder.id);
+      console.log("✅ PEDIDO SALVO COM SUCESSO! ID:", newOrder.id, "USER:", userId);
       return NextResponse.json({ created: true, id: newOrder.id });
 
     } catch (dbError: any) {
-      // 🚨 SE CHEGAR AQUI, O STRIPE VAI MOSTRAR O ERRO NA ABA "RESPONSE"
-      console.error("❌ ERRO AO GRAVAR NO BANCO:", dbError.message);
-      return new NextResponse(`Erro no Prisma: ${dbError.message}`, { status: 500 });
+      console.error("❌ ERRO NO PRISMA:", dbError.message);
+      return new NextResponse(`Erro no Banco: ${dbError.message}`, { status: 500 });
     }
   }
 
