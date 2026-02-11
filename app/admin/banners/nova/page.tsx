@@ -19,7 +19,7 @@ export default function NewBannerPage() {
   const router = useRouter()
 
   const [title, setTitle] = useState("")
-  const [imageUrl, setImageUrl] = useState("")
+  const [file, setFile] = useState<File | null>(null)
   const [link, setLink] = useState("")
   const [order, setOrder] = useState(0)
   const [active, setActive] = useState(true)
@@ -28,51 +28,48 @@ export default function NewBannerPage() {
   const [selectedCategory, setSelectedCategory] = useState("")
 
   useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await fetch("/api/admin/categories")
-        if (!res.ok) throw new Error("Falha ao buscar categorias")
-        const data = await res.json()
-        if (Array.isArray(data)) {
-          setCategories(data.filter((c: Category) => c.active))
-        }
-      } catch (err) {
-        console.error("Erro categorias:", err)
-      }
-    }
-    fetchCategories()
+    fetch("/api/admin/categories")
+      .then(res => res.json())
+      .then(data => Array.isArray(data) && setCategories(data.filter((c: Category) => c.active)))
+      .catch(console.error)
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!title.trim() || !imageUrl.trim() || !selectedCategory) {
-      return alert("Preencha todos os campos obrigatórios!")
-    }
-
-    if (!imageUrl.startsWith("http")) {
-      return alert("A imagem precisa ser uma URL válida (Cloudinary).")
+    if (!title || !file || !selectedCategory) {
+      return alert("Preencha todos os campos obrigatórios")
     }
 
     setLoading(true)
     try {
+      // 1️⃣ Upload no Cloudinary
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const uploadRes = await fetch("/api/upload/banner", {
+        method: "POST",
+        body: formData,
+      })
+
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData.error)
+
+      // 2️⃣ Criar banner
       const res = await fetch("/api/admin/banners", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: title.trim(),
-          image: imageUrl.trim(),
+          title,
+          image: uploadData.url, // ✅ URL do Cloudinary
           link: link.trim() || null,
           categoryId: selectedCategory,
-          order: Number(order) || 0,
+          order,
           active,
         }),
       })
 
-      const result = await res.json()
-      if (!res.ok) {
-        throw new Error(result.error || "Erro ao criar banner")
-      }
+      if (!res.ok) throw new Error("Erro ao criar banner")
 
       router.push("/admin/banners")
     } catch (err: any) {
@@ -89,86 +86,54 @@ export default function NewBannerPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Configurações do Banner</CardTitle>
+            <CardTitle>Configurações</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="title">Título do Banner</Label>
+              <Label>Título</Label>
+              <Input value={title} onChange={e => setTitle(e.target.value)} />
+            </div>
+
+            <div>
+              <Label>Imagem</Label>
               <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: Coleção Outono 2024"
-                required
+                type="file"
+                accept="image/*"
+                onChange={e => setFile(e.target.files?.[0] || null)}
               />
             </div>
 
             <div>
-              <Label htmlFor="image">URL da Imagem (Cloudinary)</Label>
-              <Input
-                id="image"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://res.cloudinary.com/..."
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="link">Link do Banner (opcional)</Label>
-              <Input
-                id="link"
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-                placeholder="/categoria/promocoes"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="category">Categoria</Label>
+              <Label>Categoria</Label>
               <select
-                id="category"
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full h-10 rounded-md border px-3 text-sm"
-                required
+                onChange={e => setSelectedCategory(e.target.value)}
+                className="w-full h-10 rounded-md border px-3"
               >
-                <option value="">Selecione uma categoria...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                <option value="">Selecione…</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="order">Ordem</Label>
-                <Input
-                  id="order"
-                  type="number"
-                  value={order}
-                  onChange={(e) => setOrder(Number(e.target.value) || 0)}
-                />
+                <Label>Ordem</Label>
+                <Input type="number" value={order} onChange={e => setOrder(+e.target.value || 0)} />
               </div>
 
-              <div className="flex flex-col space-y-2">
-                <Label>Banner Ativo?</Label>
+              <div className="flex items-center justify-between">
+                <Label>Ativo</Label>
                 <Switch checked={active} onCheckedChange={setActive} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <div className="flex gap-4">
-          <Button type="submit" className="flex-1" disabled={loading}>
-            {loading ? "Salvando..." : "Salvar Banner"}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>
-            Cancelar
-          </Button>
-        </div>
+        <Button type="submit" disabled={loading}>
+          {loading ? "Salvando..." : "Salvar Banner"}
+        </Button>
       </form>
     </div>
   )
