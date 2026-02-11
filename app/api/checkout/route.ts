@@ -15,16 +15,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Carrinho vazio" }, { status: 400 })
     }
 
-    // 1️⃣ Mapeamos os itens garantindo que o Metadata vá para o PRODUTO
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item: any) => ({
       price_data: {
         currency: "brl",
         unit_amount: Math.round(item.price * 100),
         product_data: {
           name: item.name,
-          images: item.image ? [item.image] : [], // Adiciona imagem no checkout se existir
+          // ✅ O Segredo para o Webhook não salvar "null" no banco:
           metadata: {
-            // ESSENCIAL: O Webhook lê daqui para salvar no banco
             productId: item.id, 
             size: item.size || "N/A",
             color: item.color || "N/A",
@@ -34,22 +32,19 @@ export async function POST(req: Request) {
       quantity: item.quantity,
     }))
 
-    // 2️⃣ Criamos a sessão
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      // Ativamos cartão e pix para melhorar suas vendas
-      payment_method_types: ["card", "pix"], 
+      // ✅ Voltamos para apenas 'card' para evitar o erro do Pix desativado
+      payment_method_types: ["card"], 
       line_items: lineItems,
       
-      // Expira em 30 minutos se não pagar (bom para controle de estoque)
-      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), 
-
       metadata: {
         userEmail: userEmail ?? "",
-        address: typeof address === 'string' ? address : JSON.stringify(address ?? "").slice(0, 450),
+        // Garantimos que o address seja uma string segura
+        address: typeof address === 'object' ? JSON.stringify(address).slice(0, 450) : String(address || "").slice(0, 450),
       },
 
-      // ✅ AJUSTE NA URL: Usando sessionId para bater com o que a sua página de sucesso busca
+      // ✅ sessionId (CamelCase) para bater com sua página de sucesso
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?sessionId={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/carrinho`,
     })
