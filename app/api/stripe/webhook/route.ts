@@ -25,36 +25,39 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as any;
-
-    // 1. PEGANDO OS DADOS DO METADATA (O que enviamos no Checkout)
     const userId = session.metadata?.userId;
-    const address = session.metadata?.address || "Endereço via Stripe";
+    const address = session.metadata?.address || "Endereço não informado";
 
     try {
-      // 2. CRIANDO O PEDIDO VINCULADO AO USUÁRIO
+      // 🚨 IMPORTANTE: Verifique se os nomes abaixo (userId, total, status) 
+      // são EXATAMENTE iguais aos do seu arquivo schema.prisma
       const newOrder = await prisma.order.create({
         data: {
-          userId: userId, // 🔥 Agora o pedido tem o ID do dono!
+          userId: userId, // Liga o pedido ao usuário logado
           stripeSessionId: session.id,
           total: session.amount_total / 100,
           status: "PAID",
           shippingAddress: address,
           items: {
             create: [{
-              name: "Produto Vendido", // Depois você pode mapear os itens reais do metadata aqui
+              name: "Produto Vendido",
               quantity: 1,
               price: session.amount_total / 100,
+              // ⚠️ Se o seu banco exigir productId, o erro continuará até 
+              // você passar um id real de produto aqui:
+              // productId: "ID_REAL_DO_BANCO" 
             }]
           }
         }
       });
 
-      console.log("✅ PEDIDO SALVO COM SUCESSO! ID:", newOrder.id, "USER:", userId);
-      return NextResponse.json({ created: true, id: newOrder.id });
+      console.log("✅ PEDIDO CRIADO:", newOrder.id);
+      return NextResponse.json({ created: true });
 
     } catch (dbError: any) {
-      console.error("❌ ERRO NO PRISMA:", dbError.message);
-      return new NextResponse(`Erro no Banco: ${dbError.message}`, { status: 500 });
+      console.error("❌ ERRO DETALHADO NO PRISMA:", dbError.message);
+      // Retornamos o erro para você ver na aba "Response" do Stripe
+      return new NextResponse(`Erro Prisma: ${dbError.message}`, { status: 500 });
     }
   }
 
