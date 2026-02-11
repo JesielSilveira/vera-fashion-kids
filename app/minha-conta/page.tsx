@@ -1,8 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation" // Importação vital
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" // Sugestão para visual
 
+// --- Configurações de Status ---
 const statusLabels: Record<string, string> = {
   PENDING: "Pendente",
   PAID: "Pago",
@@ -17,14 +20,12 @@ const statusColors: Record<string, string> = {
   DELIVERED: "bg-green-500",
 }
 
+// --- Tipagens ---
 type Item = {
   id: string
-  productId: string | null
   name: string
   quantity: number
   price: number
-  size?: string | null
-  color?: string | null
   isFrete: boolean
 }
 
@@ -33,115 +34,122 @@ type Order = {
   items: Item[]
   total: number
   status: string
-  tracking?: string | null
   createdAt: string
 }
 
 export default function MinhaContaPage() {
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get("session_id")
+
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [checkingPayment, setCheckingPayment] = useState(!!sessionId)
+
+  // Função para buscar todos os pedidos
+  async function fetchOrders() {
+    try {
+      const res = await fetch("/api/admin/orders") // Verifique se essa rota atende o cliente ou só o admin
+      if (!res.ok) throw new Error("Falha ao buscar pedidos")
+      const data: Order[] = await res.json()
+      setOrders(data)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Função para checar o pedido específico do Stripe
+  async function checkOrder(sid: string) {
+    try {
+      const res = await fetch(`/api/orders/check?sessionId=${sid}`)
+      if (res.status === 404) return false
+      return res.ok
+    } catch {
+      return false
+    }
+  }
 
   useEffect(() => {
-    async function fetchOrders() {
+    let interval: NodeJS.Timeout
+
+    async function init() {
       try {
-        const res = await fetch("/api/minha-conta/orders")
-        if (!res.ok) throw new Error("Falha ao buscar pedidos")
-        const data: Order[] = await res.json()
-        setOrders(data)
+        if (sessionId) {
+          setCheckingPayment(true)
+          let tries = 0
+
+          interval = setInterval(async () => {
+            tries++
+            const found = await checkOrder(sessionId)
+
+            if (found || tries >= 12) { // Tenta por 24 segundos
+              clearInterval(interval)
+              await fetchOrders()
+              setCheckingPayment(false)
+            }
+          }, 2000)
+        } else {
+          await fetchOrders()
+        }
       } catch (err) {
         console.error(err)
-        alert("Erro ao carregar pedidos")
-      } finally {
-        setLoading(false)
       }
     }
 
-    fetchOrders()
+    init()
+    return () => { if (interval) clearInterval(interval) }
+  }, [sessionId])
 
-    // Polling a cada 10s
-    const interval = setInterval(fetchOrders, 10000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
-
-  if (loading) return <p>Carregando pedidos...</p>
-
-  if (orders.length === 0)
-    return (
-      <section className="mx-auto max-w-4xl px-4 py-12">
-        <h1 className="text-3xl font-bold">Meus pedidos</h1>
-        <p className="text-muted-foreground">
-          Você ainda não realizou nenhuma compra.
-        </p>
-      </section>
-    )
+  if (loading) return <div className="p-10 text-center">Carregando seus dados...</div>
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-12 space-y-6">
-      <h1 className="text-3xl font-bold">Meus pedidos</h1>
+    <div className="container mx-auto p-6 max-w-4xl">
+      <h1 className="text-3xl font-bold mb-8">Minha Conta</h1>
 
-      {orders.map((order) => (
-        <div key={order.id} className="rounded-lg border p-4 space-y-3">
-          {/* HEADER */}
-          <div className="flex items-center justify-between">
-            <div>
-              <strong>Pedido #{order.id.slice(0, 8)}</strong>
-              <p className="text-sm text-muted-foreground">
-                {new Date(order.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-
-            <Badge className={statusColors[order.status]}>
-              {statusLabels[order.status] ?? order.status}
-            </Badge>
-          </div>
-
-          {/* ITENS */}
-          <div className="space-y-1 text-sm">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between">
-                <span>
-                  {item.isFrete ? "🚚 Frete" : item.name}
-                  {!item.isFrete && (
-                    <>
-                      {item.size && ` • Tam: ${item.size}`}
-                      {item.color && ` • Cor: ${item.color}`}
-                    </>
-                  )}{" "}
-                  × {item.quantity}
-                </span>
-                <span>{formatCurrency(item.price * item.quantity)}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* RASTREIO */}
-          {order.tracking && (
-            <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-              <strong>Código de rastreio:</strong>
-              <a
-                href={`https://www.linkcorreios.com.br/?id=${order.tracking}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block font-mono text-blue-600 underline"
-              >
-                {order.tracking}
-              </a>
-              <span className="text-xs text-muted-foreground">
-                Clique para acompanhar no site dos Correios
-              </span>
-            </div>
-          )}
-
-          {/* TOTAL */}
-          <div className="flex justify-between border-t pt-3 font-semibold">
-            <span>Total</span>
-            <span>{formatCurrency(order.total)}</span>
-          </div>
+      {checkingPayment && (
+        <div className="mb-6 p-4 bg-blue-100 border border-blue-300 text-blue-800 rounded-lg animate-pulse">
+          Estamos confirmando seu pagamento. Isso leva apenas alguns segundos...
         </div>
-      ))}
-    </section>
+      )}
+
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold">Meus Pedidos</h2>
+        
+        {orders.length === 0 ? (
+          <p className="text-muted-foreground text-center py-10 border rounded-lg">
+            Você ainda não possui pedidos registrados.
+          </p>
+        ) : (
+          orders.map((order) => (
+            <Card key={order.id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Pedido #{order.id.slice(-6).toUpperCase()}
+                </CardTitle>
+                <Badge className={statusColors[order.status] || "bg-gray-500"}>
+                  {statusLabels[order.status] || order.status}
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground mb-4">
+                  Realizado em: {new Date(order.createdAt).toLocaleDateString("pt-BR")}
+                </div>
+                <div className="space-y-2">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span>{item.quantity}x {item.name}</span>
+                      <span>R$ {item.price.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t flex justify-between font-bold">
+                  <span>Total</span>
+                  <span>R$ {order.total.toFixed(2)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
   )
 }
