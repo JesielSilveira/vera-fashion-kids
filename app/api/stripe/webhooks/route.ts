@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session
 
-    // 1️⃣ Evitar duplicidade
+    // 1️⃣ Evitar duplicidade (Seu Schema tem @unique no stripeSessionId)
     const alreadyExists = await prisma.order.findUnique({
       where: { stripeSessionId: session.id },
     })
@@ -40,16 +40,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true })
     }
 
-    // 2️⃣ Buscar itens com EXPAND para garantir acesso aos metadados do produto
+    // 2️⃣ Buscar itens com EXPAND (Obrigatório para ler metadados do produto)
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
       expand: ['data.price.product'],
     })
 
     const userEmail = session.metadata?.userEmail
+    const addressString = session.metadata?.address || ""
+
+    // 3️⃣ Localizar usuário (Seu Schema permite Order sem User - userId?)
     const user = userEmail ? await prisma.user.findUnique({ where: { email: userEmail } }) : null
 
     try {
-      // 3️⃣ Transação Atômica: Pedido + Estoque
+      // 4️⃣ Transação Atômica: Pedido + Itens + Estoque
       await prisma.$transaction(async (tx) => {
         const order = await tx.order.create({
           data: {
@@ -57,11 +60,12 @@ export async function POST(req: Request) {
             userId: user?.id ?? null,
             total: (session.amount_total ?? 0) / 100,
             status: "PAID",
+            shippingAddress: addressString, // Salvando o endereço que vem do checkout
             items: {
               create: lineItems.data.map((item) => {
-                // Tenta pegar metadados do preço ou do produto expandido
-                const product = item.price?.product as Stripe.Product
-                const metadata = product?.metadata || item.price?.metadata || {}
+                // ✅ Pega metadados do produto expandido
+                const stripeProduct = item.price?.product as Stripe.Product
+                const metadata = stripeProduct?.metadata || {}
                 
                 const isFrete = item.description?.toLowerCase().includes("frete") ?? false
 
@@ -80,10 +84,11 @@ export async function POST(req: Request) {
           include: { items: true }
         })
 
-        // 4️⃣ Atualizar Estoque
+        // 5️⃣ Atualizar Estoque (Baseado no seu Schema de Variation e Product)
         for (const item of order.items) {
           if (item.productId && !item.isFrete) {
-            // Se houver variação, tenta baixar o estoque dela
+            
+            // Se houver variação (size/color), baixa o estoque da variação primeiro
             if (item.size || item.color) {
               await tx.variation.updateMany({
                 where: {
@@ -95,24 +100,24 @@ export async function POST(req: Request) {
               })
             } 
             
-            // Baixa estoque geral do produto (usa try/catch interno para não travar o pedido)
+            // Baixa estoque global do produto
             try {
               await tx.product.update({
                 where: { id: item.productId },
                 data: { stock: { decrement: item.quantity } }
               })
             } catch (error) {
-              console.warn(`⚠️ Não foi possível baixar estoque do produto ID: ${item.productId}`)
+              console.warn(`⚠️ Produto ${item.productId} não encontrado para atualizar estoque global.`)
             }
           }
         }
       })
 
-      console.log("✅ Pedido gravado no banco com sucesso:", session.id)
+      console.log("✅ Pedido e estoque processados com sucesso!")
     } catch (error: any) {
-      console.error("❌ Erro crítico ao salvar pedido no Prisma:", error)
-      // Retornar 500 força o Stripe a tentar reenviar o webhook mais tarde
-      return new NextResponse("Database error", { status: 500 })
+      console.error("❌ Erro ao salvar no banco:", error.message)
+      // Retornar 500 para o Stripe tentar novamente
+      return new NextResponse("Database Error", { status: 500 })
     }
   }
 

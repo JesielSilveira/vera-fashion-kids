@@ -18,24 +18,23 @@ export async function POST(req: Request) {
       )
     }
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-      items.map((item: any) => ({
-        price_data: {
-          currency: "brl",
-          unit_amount: Math.round(item.price * 100),
-          product_data: {
-            name: item.name,
-            // ✅ CORREÇÃO DEFINITIVA: Metadados dentro de product_data
-            // O Stripe aceita metadados aqui quando o preço é criado dinamicamente.
-            metadata: {
-              productId: item.id,
-              size: item.size ?? "",
-              color: item.color ?? "",
+      const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
+        items.map((item: any) => ({
+          price_data: {
+            currency: "brl",
+            unit_amount: Math.round(item.price * 100), // Converte para centavos
+            product_data: {
+              name: item.name,
+              // ✅ CORRETO PARA SEU SCHEMA:
+              metadata: {
+                productId: item.id, // O Webhook vai usar isso para o productId do OrderItem
+                size: item.size || "",
+                color: item.color || "",
+              },
             },
           },
-        },
-        quantity: item.quantity,
-      }))
+          quantity: item.quantity,
+  }))
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
