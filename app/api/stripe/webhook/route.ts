@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     const productData = JSON.parse(session.metadata?.productData || "[]");
 
     try {
+      // O Prisma cria o Order e os OrderItems numa única transação
       const newOrder = await prisma.order.create({
         data: {
           userId: userId, 
@@ -32,21 +33,21 @@ export async function POST(req: Request) {
           shippingAddress: session.metadata?.address || "Endereço via Stripe",
           items: {
             create: productData.map((item: any) => ({
-              // 🧪 TESTE: Comentamos o productId para ver o pedido nascer
-              // productId: item.productId, 
-              name: item.name || "Produto Vendido",
-              quantity: item.quantity,
-              price: item.price,
+              // O VILÃO: Se este ID não existir na tabela Product, o MySQL bloqueia.
+              productId: item.id, 
+              name: item.n,
+              quantity: item.q,
+              price: item.p,
             }))
           }
         }
       });
 
-      console.log("✅ TESTE BEM SUCEDIDO: Pedido criado sem vínculo de ID de produto!");
+      console.log("✅ Pedido e Itens gravados com sucesso!");
       return NextResponse.json({ created: true });
     } catch (dbError: any) {
-      console.error("❌ ERRO MESMO SEM PRODUCTID:", dbError.message);
-      return new NextResponse(`Erro: ${dbError.message}`, { status: 500 });
+      console.error("❌ ERRO NO PRISMA:", dbError.message);
+      return new NextResponse(`Erro Banco: ${dbError.message}`, { status: 500 });
     }
   }
   return NextResponse.json({ received: true });
