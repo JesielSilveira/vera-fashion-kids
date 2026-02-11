@@ -1,35 +1,29 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url)
-    const sessionId = searchParams.get("sessionId")
+    const { searchParams } = new URL(req.url);
+    const sessionId = searchParams.get("sessionId");
 
-    if (!sessionId) {
-      return NextResponse.json({ error: "Session ID ausente" }, { status: 400 })
-    }
+    console.log("🔍 Buscando pedido para a sessão:", sessionId);
 
-    // Buscamos o pedido pelo ID da sessão que o Stripe gerou
+    if (!sessionId) return new NextResponse("Falta sessionId", { status: 400 });
+
     const order = await prisma.order.findUnique({
-      where: { 
-        stripeSessionId: sessionId 
-      },
-      include: { 
-        items: true // Importante para a página de sucesso mostrar os produtos
-      } 
-    })
+      where: { stripeSessionId: sessionId },
+      include: { items: true },
+    });
 
     if (!order) {
-      // Retornamos 404 enquanto o Webhook ainda não salvou no banco.
-      // A sua página de sucesso vai entender isso e tentar de novo em 2 segundos.
-      return new NextResponse("Aguardando processamento...", { status: 404 })
+      console.log("⚠️ Pedido ainda não encontrado no banco de dados.");
+      return new NextResponse("Ainda processando...", { status: 404 });
     }
 
-    // Se achou, retorna o pedido completo!
-    return NextResponse.json(order)
-  } catch (error) {
-    console.error("❌ Erro na rota de check:", error)
-    return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 })
+    console.log("✅ Pedido encontrado!");
+    return NextResponse.json(order);
+  } catch (error: any) {
+    console.error("❌ ERRO NO CHECK:", error.message);
+    return new NextResponse(error.message, { status: 500 });
   }
 }
