@@ -113,63 +113,75 @@ export default function NewProductPage() {
   // =========================
   // SUBMIT
   // =========================
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault()
 
-    if (!name || !price || !categoryId) {
-      alert("Preencha nome, preço e categoria")
-      return
-    }
-
-    try {
-      // 🔹 Converte imagens para base64
-      const imageBase64: string[] = []
-      for (const file of images) {
-        const reader = new FileReader()
-        const base64 = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsDataURL(file)
-        })
-        imageBase64.push(base64)
-      }
-
-      // 🔹 Sanitiza variações
-      const safeVariations = variations.map((v) => ({
-        ...v,
-        stock: Number(v.stock) || 0,
-        priceDiff: Number(v.priceDiff) || 0,
-        imageIndex:
-          typeof v.imageIndex === "number" ? v.imageIndex : undefined,
-      }))
-
-      // 🔹 Envia para API
-      const res = await fetch("/api/admin/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          slug: slug || makeProductSlug(name),
-          price: Number(price),
-          description,
-          active,
-          featured,
-          bestSeller,
-          images: imageBase64, // 📌 base64 direto para o banco
-          categoryId,
-          variations: safeVariations,
-        }),
-      })
-
-      if (!res.ok) throw new Error("Erro ao salvar produto")
-
-      router.push("/admin/produtos")
-      router.refresh()
-    } catch (err) {
-      console.error(err)
-      alert("Erro ao salvar produto")
-    }
+  if (!name || !price || !categoryId) {
+    alert("Preencha nome, preço e categoria")
+    return
   }
+
+  if (images.length === 0) {
+    alert("Adicione ao menos uma imagem")
+    return
+  }
+
+  try {
+    // 1️⃣ Upload das imagens no Cloudinary
+    const formData = new FormData()
+    images.forEach((file) => formData.append("files", file))
+
+    const uploadRes = await fetch("/api/upload/product", {
+      method: "POST",
+      body: formData,
+    })
+
+    const uploadText = await uploadRes.text()
+    if (!uploadRes.ok) throw new Error(uploadText)
+
+    const uploadData = JSON.parse(uploadText)
+
+    if (!Array.isArray(uploadData.urls)) {
+      throw new Error("Upload não retornou URLs")
+    }
+
+    // 2️⃣ Sanitiza variações
+    const safeVariations = variations.map((v) => ({
+      ...v,
+      stock: Number(v.stock) || 0,
+      priceDiff: Number(v.priceDiff) || 0,
+      imageIndex:
+        typeof v.imageIndex === "number" ? v.imageIndex : undefined,
+    }))
+
+    // 3️⃣ Cria produto no banco
+    const res = await fetch("/api/admin/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        slug: slug || makeProductSlug(name),
+        price: Number(price),
+        description,
+        active,
+        featured,
+        bestSeller,
+        images: uploadData.urls, // ✅ URLs Cloudinary
+        categoryId,
+        variations: safeVariations,
+      }),
+    })
+
+    if (!res.ok) throw new Error("Erro ao salvar produto")
+
+    router.push("/admin/produtos")
+    router.refresh()
+  } catch (err) {
+    console.error(err)
+    alert("Erro ao salvar produto")
+  }
+}
+
 
   // =========================
   // UI
