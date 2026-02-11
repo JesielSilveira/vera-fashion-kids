@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation" // Importação vital
+import { useEffect, useState, Suspense } from "react" // Adicionado Suspense
+import { useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" // Sugestão para visual
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 // --- Configurações de Status ---
 const statusLabels: Record<string, string> = {
@@ -37,7 +37,8 @@ type Order = {
   createdAt: string
 }
 
-export default function MinhaContaPage() {
+// 1. Criamos um componente interno para a lógica que usa SearchParams
+function MinhaContaContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
 
@@ -45,10 +46,10 @@ export default function MinhaContaPage() {
   const [loading, setLoading] = useState(true)
   const [checkingPayment, setCheckingPayment] = useState(!!sessionId)
 
-  // Função para buscar todos os pedidos
   async function fetchOrders() {
     try {
-      const res = await fetch("/api/admin/orders") // Verifique se essa rota atende o cliente ou só o admin
+      // ATENÇÃO: Verifique se /api/admin/orders filtra por usuário logado!
+      const res = await fetch("/api/admin/orders") 
       if (!res.ok) throw new Error("Falha ao buscar pedidos")
       const data: Order[] = await res.json()
       setOrders(data)
@@ -57,7 +58,6 @@ export default function MinhaContaPage() {
     }
   }
 
-  // Função para checar o pedido específico do Stripe
   async function checkOrder(sid: string) {
     try {
       const res = await fetch(`/api/orders/check?sessionId=${sid}`)
@@ -81,7 +81,7 @@ export default function MinhaContaPage() {
             tries++
             const found = await checkOrder(sessionId)
 
-            if (found || tries >= 12) { // Tenta por 24 segundos
+            if (found || tries >= 12) {
               clearInterval(interval)
               await fetchOrders()
               setCheckingPayment(false)
@@ -99,7 +99,7 @@ export default function MinhaContaPage() {
     return () => { if (interval) clearInterval(interval) }
   }, [sessionId])
 
-  if (loading) return <div className="p-10 text-center">Carregando seus dados...</div>
+  if (loading) return <div className="p-10 text-center text-muted-foreground">Carregando seus dados...</div>
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -114,7 +114,7 @@ export default function MinhaContaPage() {
       <div className="space-y-6">
         <h2 className="text-xl font-semibold">Meus Pedidos</h2>
         
-        {orders.length === 0 ? (
+        {orders.length === 0 && !checkingPayment ? (
           <p className="text-muted-foreground text-center py-10 border rounded-lg">
             Você ainda não possui pedidos registrados.
           </p>
@@ -151,5 +151,14 @@ export default function MinhaContaPage() {
         )}
       </div>
     </div>
+  )
+}
+
+// 2. O export padrão envolve o conteúdo no Suspense para evitar erro de build
+export default function MinhaContaPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Carregando...</div>}>
+      <MinhaContaContent />
+    </Suspense>
   )
 }
