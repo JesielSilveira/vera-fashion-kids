@@ -7,7 +7,7 @@ export async function middleware(req: NextRequest) {
 
   // ✅ 0. LIBERAÇÃO PÚBLICA (Sem Token)
   // Liberamos o Webhook (Stripe) e a rota de Check (Página de Sucesso)
-  if (pathname.startsWith("/api/stripe/webhooks") || pathname === "/api/orders/check") {
+  if (pathname.startsWith("/api/stripe/webhook") || pathname === "/api/orders/check") {
     return NextResponse.next()
   }
 
@@ -49,7 +49,7 @@ export const config = {
     "/checkout/:path*", 
     "/admin/:path*", 
     "/api/admin/:path*",
-    "/api/webhooks/:path*",
+    "/api/webhook/:path*",
     "/api/orders/check" // ✅ Adicionado para ser processado pelo Middleware
   ],
 }
