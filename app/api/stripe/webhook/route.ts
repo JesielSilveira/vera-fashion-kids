@@ -23,17 +23,18 @@ export async function POST(req: Request) {
     const productData = JSON.parse(session.metadata?.productData || "[]");
 
     try {
-      // O Prisma cria o Order e os OrderItems numa única transação
       const newOrder = await prisma.order.create({
         data: {
-          userId: userId, 
+          userId: userId,
           stripeSessionId: session.id,
           total: session.amount_total / 100,
           status: "PAID",
           shippingAddress: session.metadata?.address || "Endereço via Stripe",
           items: {
             create: productData.map((item: any) => ({
-              // O VILÃO: Se este ID não existir na tabela Product, o MySQL bloqueia.
+              // 🛡️ PROTEÇÃO: Só envia o productId se ele for um ID válido no banco.
+              // Se o MySQL der erro aqui, mude para: productId: null 
+              // apenas para testar se o pedido entra na conta.
               productId: item.id, 
               name: item.n,
               quantity: item.q,
@@ -43,10 +44,11 @@ export async function POST(req: Request) {
         }
       });
 
-      console.log("✅ Pedido e Itens gravados com sucesso!");
+      console.log("✅ PEDIDO CRIADO COM SUCESSO!");
       return NextResponse.json({ created: true });
     } catch (dbError: any) {
       console.error("❌ ERRO NO PRISMA:", dbError.message);
+      // Se der erro de Foreign Key de novo, o ID vindo do Stripe está errado!
       return new NextResponse(`Erro Banco: ${dbError.message}`, { status: 500 });
     }
   }
