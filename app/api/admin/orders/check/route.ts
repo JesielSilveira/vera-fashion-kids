@@ -1,42 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 
-export const dynamic = "force-dynamic";
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const sessionId = searchParams.get("sessionId")
 
-// GET /api/orders/check?sessionId=cs_test_xxx
-export async function GET(req: NextRequest) {
+  if (!sessionId) return new NextResponse("Faltando ID", { status: 400 })
+
   try {
-    const { searchParams } = new URL(req.url);
-    const sessionId = searchParams.get("sessionId");
+    const order = await prisma.order.findUnique({
+      where: { stripeSessionId: sessionId },
+      include: { items: true } 
+    })
 
-    if (!sessionId) {
-      return NextResponse.json(
-        { error: "sessionId é obrigatório" },
-        { status: 400 }
-      );
-    }
+    if (!order) return new NextResponse("Pedido não encontrado", { status: 404 })
 
-    const order = await prisma.order.findFirst({
-      where: {
-        stripeSessionId: sessionId,
-      },
-    });
-
-    // Webhook ainda não processou
-    if (!order) {
-      return NextResponse.json(
-        { error: "Pedido ainda não encontrado" },
-        { status: 404 }
-      );
-    }
-
-    // Pedido encontrado
-    return NextResponse.json(order, { status: 200 });
+    return NextResponse.json(order)
   } catch (error) {
-    console.error("[ORDERS_CHECK]", error);
-    return NextResponse.json(
-      { error: "Erro ao verificar pedido" },
-      { status: 500 }
-    );
+    return new NextResponse("Erro no servidor", { status: 500 })
   }
 }
