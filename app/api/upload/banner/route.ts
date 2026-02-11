@@ -7,8 +7,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 })
 
-export const dynamic = "force-dynamic"
-
 export async function POST(req: Request) {
   try {
     const formData = await req.formData()
@@ -19,21 +17,16 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
+    const base64 = `data:${file.type};base64,${buffer.toString("base64")}`
 
-    const result = await new Promise<any>((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        { folder: "banners" },
-        (error, result) => {
-          if (error) reject(error)
-          else resolve(result)
-        }
-      ).end(buffer)
+    const result = await cloudinary.uploader.upload(base64, {
+      folder: "banners",
     })
 
-    // 🔥 ISSO É O QUE O FRONT PRECISA
+    // ✅ ISSO É O MAIS IMPORTANTE
     return NextResponse.json({
       url: result.secure_url,
-      publicId: result.public_id,
+      public_id: result.public_id,
     })
   } catch (err) {
     console.error("UPLOAD ERROR:", err)

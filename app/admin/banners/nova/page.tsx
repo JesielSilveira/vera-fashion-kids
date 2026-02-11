@@ -34,55 +34,65 @@ export default function NewBannerPage() {
       .catch(console.error)
   }, [])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault()
 
-    if (!title || !file || !selectedCategory) {
-      return alert("Preencha todos os campos obrigatórios")
-    }
-
-    setLoading(true)
-    try {
-      // 1️⃣ Upload no Cloudinary
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const uploadRes = await fetch("/api/upload/banner", {
-        method: "POST",
-        body: formData,
-      })
-
-      const text = await uploadRes.text()
-
-      if (!uploadRes.ok) {
-        console.error("Erro upload:", text)
-        throw new Error("Falha no upload da imagem")
-      }
-
-      const uploadData = JSON.parse(text)
-      // 2️⃣ Criar banner
-      const res = await fetch("/api/admin/banners", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          image: uploadData.url, // ✅ URL do Cloudinary
-          link: link.trim() || null,
-          categoryId: selectedCategory,
-          order,
-          active,
-        }),
-      })
-
-      if (!res.ok) throw new Error("Erro ao criar banner")
-
-      router.push("/admin/banners")
-    } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setLoading(false)
-    }
+  if (!title || !file || !selectedCategory) {
+    return alert("Preencha todos os campos obrigatórios")
   }
+
+  setLoading(true)
+
+  try {
+    // 1️⃣ Upload no Cloudinary
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const uploadRes = await fetch("/api/upload/banner", {
+      method: "POST",
+      body: formData,
+    })
+
+    const text = await uploadRes.text()
+
+    if (!uploadRes.ok) {
+      console.error("Erro upload:", text)
+      throw new Error("Falha no upload da imagem")
+    }
+
+    const uploadData = JSON.parse(text)
+
+    if (!uploadData.url) {
+      console.error("Upload sem URL:", uploadData)
+      throw new Error("Upload não retornou URL da imagem")
+    }
+
+    // 2️⃣ Criar banner
+    const res = await fetch("/api/admin/banners", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        image: uploadData.url,
+        link: link.trim() || null,
+        categoryId: selectedCategory,
+        order,
+        active,
+      }),
+    })
+
+    if (!res.ok) throw new Error("Erro ao criar banner")
+
+    router.push("/admin/banners")
+    router.refresh()
+  } catch (err: any) {
+    alert(err.message)
+  } finally {
+    setLoading(false)
+  }
+}
+
 
   return (
     <div className="p-6">
