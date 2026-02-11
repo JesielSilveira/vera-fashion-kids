@@ -23,30 +23,29 @@ export async function POST(req: Request) {
     const productData = JSON.parse(session.metadata?.productData || "[]");
 
     try {
-      // O Prisma cria o Order e já "anexa" os OrderItems com o orderId correto
       const newOrder = await prisma.order.create({
         data: {
-          userId: userId,
+          userId: userId, 
           stripeSessionId: session.id,
           total: session.amount_total / 100,
           status: "PAID",
           shippingAddress: session.metadata?.address || "Endereço via Stripe",
           items: {
             create: productData.map((item: any) => ({
-              // Conexão com a tabela Product (O erro de Foreign Key morre aqui se o ID for válido)
-              productId: item.productId, 
+              // 🧪 TESTE: Comentamos o productId para ver o pedido nascer
+              // productId: item.productId, 
+              name: item.name || "Produto Vendido",
               quantity: item.quantity,
               price: item.price,
-              name: item.name
             }))
           }
         }
       });
 
-      console.log("✅ Pedido e Itens criados com sucesso!");
+      console.log("✅ TESTE BEM SUCEDIDO: Pedido criado sem vínculo de ID de produto!");
       return NextResponse.json({ created: true });
     } catch (dbError: any) {
-      console.error("❌ ERRO NO PRISMA:", dbError.message);
+      console.error("❌ ERRO MESMO SEM PRODUCTID:", dbError.message);
       return new NextResponse(`Erro: ${dbError.message}`, { status: 500 });
     }
   }
