@@ -1,70 +1,39 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import slugify from "slugify"
-import { v2 as cloudinary } from "cloudinary"
-
-// 🔹 Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-})
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import slugify from "slugify";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
+    const body = await req.json();
 
     if (!body.name) {
-      return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 })
-    }
-
-    // 🔹 Upload das imagens para Cloudinary
-    let uploadedImages: string[] = []
-    if (Array.isArray(body.images) && body.images.length > 0) {
-      for (const base64 of body.images) {
-        // base64 do frontend: "data:image/png;base64,AAA..."
-        const result = await new Promise<any>((resolve, reject) => {
-          cloudinary.uploader.upload(base64, { folder: "products" }, (err, res) => {
-            if (err) reject(err)
-            else resolve(res)
-          })
-        })
-        uploadedImages.push(result.secure_url)
-      }
+      return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 });
     }
 
     // 🔹 Cria slug automaticamente se não vier do frontend
-    const slug =
-      body.slug?.trim() ||
-      slugify(body.name ?? "produto", { lower: true, strict: true })
+    const slug = body.slug?.trim() || slugify(body.name, { lower: true, strict: true });
 
+    // 🔹 Cria o produto no banco
     const product = await prisma.product.create({
       data: {
         name: body.name,
         slug,
         price: Number(body.price ?? 0),
         description: body.description ?? "",
-
-        // ✅ Usa as URLs do Cloudinary
-        images: uploadedImages,
+        images: Array.isArray(body.images) ? body.images : [],
         sizes: Array.isArray(body.sizes) ? body.sizes : [],
         colors: Array.isArray(body.colors) ? body.colors : [],
         stock: Number(body.stock ?? 0),
-
         active: body.active ?? true,
         featured: body.featured ?? false,
         bestSeller: body.bestSeller ?? false,
-
         weight: body.weight != null ? Number(body.weight) : null,
         height: body.height != null ? Number(body.height) : null,
         width: body.width != null ? Number(body.width) : null,
         length: body.length != null ? Number(body.length) : null,
-
         categoryId: body.categoryId ?? null,
-
-        // ✅ Variações
         variations: Array.isArray(body.variations)
           ? {
               create: body.variations.map((v: any) => ({
@@ -78,45 +47,16 @@ export async function POST(req: Request) {
       },
       include: {
         variations: true,
-        reviews: true, // retorna vazio para frontend
+        reviews: true,
       },
-    })
+    });
 
-    // 🔹 Formata para frontend
-    const formatted = {
-      id: product.id,
-      name: product.name,
-      slug: product.slug,
-      price: product.price,
-      description: product.description ?? "",
-      images: Array.isArray(product.images) ? product.images : [],
-      sizes: Array.isArray(product.sizes) ? product.sizes : [],
-      colors: Array.isArray(product.colors) ? product.colors : [],
-      stock: product.stock ?? 0,
-      weight: product.weight ?? null,
-      height: product.height ?? null,
-      width: product.width ?? null,
-      length: product.length ?? null,
-      active: product.active,
-      featured: product.featured,
-      bestSeller: product.bestSeller,
-      categoryId: product.categoryId ?? null,
-      variations: product.variations.map(v => ({
-        id: v.id,
-        size: v.size,
-        color: v.color,
-        stock: v.stock,
-        priceDiff: v.priceDiff,
-      })),
-      reviews: product.reviews ?? [],
-    }
-
-    return NextResponse.json(formatted, { status: 201 })
+    return NextResponse.json(product, { status: 201 });
   } catch (err: any) {
-    console.error("Erro ao criar produto:", err)
+    console.error("Erro ao criar produto:", err);
     return NextResponse.json(
       { error: err.message || "Erro no servidor" },
       { status: 500 }
-    )
+    );
   }
 }
