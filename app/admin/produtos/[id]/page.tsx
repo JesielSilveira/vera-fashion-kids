@@ -10,26 +10,22 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { X, Plus, Trash2 } from "lucide-react"
 
 type Category = {
   id: string
   name: string
-  slug: string
   active: boolean
 }
 
 type Variation = {
+  tempId: number
+  id?: string // ID real do banco (opcional para novas variações)
   size: string
   color: string
   stock: number
   sku: string
-  priceDiff?: number
-  imageIndex?: number
-  weight?: number
-  height?: number
-  width?: number
-  length?: number
+  priceDiff: number
 }
 
 export default function EditProductPage() {
@@ -40,174 +36,128 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // =========================
-  // BÁSICO
-  // =========================
+  // Estados do Produto
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [price, setPrice] = useState("")
   const [description, setDescription] = useState("")
-
-  // =========================
-  // FLAGS
-  // =========================
   const [active, setActive] = useState(true)
   const [featured, setFeatured] = useState(false)
   const [bestSeller, setBestSeller] = useState(false)
 
-  // =========================
-  // RELACIONAMENTOS
-  // =========================
-  const [images, setImages] = useState<File[]>([])
+  // Imagens
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([])
   const [existingImages, setExistingImages] = useState<string[]>([])
+
+  // Relacionamentos e Dimensões
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryId, setCategoryId] = useState<string | null>(null)
-
-  // =========================
-  // VARIAÇÕES
-  // =========================
   const [variations, setVariations] = useState<Variation[]>([])
-
-  // =========================
-  // DIMENSÕES
-  // =========================
   const [weight, setWeight] = useState("")
   const [height, setHeight] = useState("")
   const [width, setWidth] = useState("")
   const [length, setLength] = useState("")
 
-  // =========================
-  // LOAD PRODUTO
-  // =========================
+  // 1️⃣ Carregar Produto e Categorias
   useEffect(() => {
-    async function loadProduct() {
+    async function loadData() {
       try {
-        const res = await fetch(`/api/admin/products/${id}`)
-        if (!res.ok) throw new Error("Erro ao carregar produto")
-        const p = await res.json()
+        const [prodRes, catRes] = await Promise.all([
+          fetch(`/api/admin/products/${id}`),
+          fetch("/api/admin/categories")
+        ])
 
-        setName(p.name ?? "")
-        setSlug(p.slug ?? "")
-        setPrice(String(p.price ?? ""))
-        setDescription(p.description ?? "")
+        if (!prodRes.ok) throw new Error("Produto não encontrado")
+        const p = await prodRes.json()
+        const cats = await catRes.json()
 
+        setCategories(cats.filter((c: Category) => c.active))
+
+        // Preencher estados
+        setName(p.name || "")
+        setSlug(p.slug || "")
+        setPrice(String(p.price || ""))
+        setDescription(p.description || "")
         setActive(!!p.active)
         setFeatured(!!p.featured)
         setBestSeller(!!p.bestSeller)
-
-        setExistingImages(p.images ?? [])
-        setCategoryId(p.categoryId ?? null)
+        setExistingImages(p.images || [])
+        setCategoryId(p.categoryId || null)
+        setWeight(p.weight ? String(p.weight) : "")
+        setHeight(p.height ? String(p.height) : "")
+        setWidth(p.width ? String(p.width) : "")
+        setLength(p.length ? String(p.length) : "")
 
         setVariations(
-          (p.variations ?? []).map((v: any) => ({
-            size: v.size ?? "",
-            color: v.color ?? "",
-            stock: v.stock ?? 0,
-            sku: v.sku ?? "",
-            priceDiff: v.priceDiff ?? 0,
-            imageIndex: v.imageIndex,
-            weight: v.weight,
-            height: v.height,
-            width: v.width,
-            length: v.length,
+          (p.variations || []).map((v: any) => ({
+            tempId: Math.random(),
+            id: v.id,
+            size: v.size || "",
+            color: v.color || "",
+            stock: v.stock || 0,
+            sku: v.sku || "",
+            priceDiff: v.priceDiff || 0,
           }))
         )
-
-        setWeight(p.weight ?? "")
-        setHeight(p.height ?? "")
-        setWidth(p.width ?? "")
-        setLength(p.length ?? "")
       } catch (err) {
         console.error(err)
-        alert("Erro ao carregar produto")
         router.push("/admin/produtos")
       } finally {
         setLoading(false)
       }
     }
-
-    if (id) loadProduct()
+    loadData()
   }, [id, router])
 
-  // =========================
-  // LOAD CATEGORIAS
-  // =========================
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const res = await fetch("/api/admin/categories")
-        const data = await res.json()
-        setCategories(data.filter((c: Category) => c.active))
-      } catch (err) {
-        console.error("Erro ao carregar categorias", err)
-      }
-    }
-    loadCategories()
-  }, [])
-
-  // =========================
-  // HELPERS
-  // =========================
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // 2️⃣ Helpers de Imagem
+  function handleNewImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.currentTarget.files
     if (!files) return
-    setImages((prev) => [...prev, ...Array.from(files)])
+    setNewImageFiles((prev) => [...prev, ...Array.from(files)])
   }
 
+  function removeExistingImage(url: string) {
+    setExistingImages((prev) => prev.filter((img) => img !== url))
+  }
+
+  function removeNewImage(index: number) {
+    setNewImageFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // 3️⃣ Helpers de Variação
   function addVariation() {
     setVariations((prev) => [
       ...prev,
-      { size: "", color: "", stock: 0, sku: "", priceDiff: 0 },
+      { tempId: Date.now(), size: "", color: "", stock: 0, sku: "", priceDiff: 0 },
     ])
   }
 
-  function updateVariation<T extends keyof Variation>(
-    index: number,
-    field: T,
-    value: Variation[T]
-  ) {
-    setVariations((prev) =>
-      prev.map((v, i) => (i === index ? { ...v, [field]: value } : v))
-    )
+  function updateVariation<T extends keyof Variation>(tempId: number, field: T, value: Variation[T]) {
+    setVariations((prev) => prev.map((v) => (v.tempId === tempId ? { ...v, [field]: value } : v)))
   }
 
-  function removeVariation(index: number) {
-    setVariations((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  // =========================
-  // SAVE
-  // =========================
+  // 4️⃣ Salvar Alterações
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
 
     try {
-      // 📌 converte novas imagens para base64
-      const uploadedImages: string[] = []
-      for (const file of images) {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsDataURL(file)
+      let finalImages = [...existingImages]
+
+      // Se houver novas imagens, faz upload para o Cloudinary primeiro
+      if (newImageFiles.length > 0) {
+        const formData = new FormData()
+        newImageFiles.forEach((file) => formData.append("files", file))
+        
+        const uploadRes = await fetch("/api/upload/product", {
+          method: "POST",
+          body: formData,
         })
-        uploadedImages.push(base64)
+        
+        if (!uploadRes.ok) throw new Error("Erro no upload de novas imagens")
+        const { urls } = await uploadRes.json()
+        finalImages = [...finalImages, ...urls]
       }
-
-      const allImages = [...existingImages, ...uploadedImages]
-
-      // sanitiza variações
-      const safeVariations = variations.map((v) => ({
-        ...v,
-        stock: Number(v.stock) || 0,
-        priceDiff: Number(v.priceDiff) || 0,
-        imageIndex: typeof v.imageIndex === "number" ? v.imageIndex : undefined,
-        weight: v.weight ? Number(v.weight) : undefined,
-        height: v.height ? Number(v.height) : undefined,
-        width: v.width ? Number(v.width) : undefined,
-        length: v.length ? Number(v.length) : undefined,
-      }))
 
       const res = await fetch(`/api/admin/products/${id}`, {
         method: "PUT",
@@ -220,142 +170,135 @@ export default function EditProductPage() {
           active,
           featured,
           bestSeller,
-          images: allImages, // 📌 base64 direto no banco
+          images: finalImages,
           categoryId,
           weight: weight ? Number(weight) : null,
           height: height ? Number(height) : null,
           width: width ? Number(width) : null,
           length: length ? Number(length) : null,
-          variations: safeVariations,
+          variations: variations.map(({ tempId, ...rest }) => ({
+            ...rest,
+            stock: Number(rest.stock),
+            priceDiff: Number(rest.priceDiff),
+          })),
         }),
       })
 
-      if (!res.ok) throw new Error()
+      if (!res.ok) throw new Error("Erro ao atualizar produto")
+      
       router.push("/admin/produtos")
       router.refresh()
     } catch (err) {
-      console.error(err)
-      alert("Erro ao salvar produto")
+      alert("Erro ao salvar alterações")
     } finally {
       setSaving(false)
     }
   }
 
-  // =========================
-  // UI
-  // =========================
-  if (loading) return <p className="text-muted-foreground">Carregando...</p>
+  if (loading) return <div className="p-10 text-center">Carregando dados do produto...</div>
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <h1 className="text-3xl font-bold">Editar produto</h1>
+    <form onSubmit={handleSubmit} className="space-y-8 max-w-6xl mx-auto pb-20 p-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Editar: {name}</h1>
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>
+          <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
+        </div>
+      </div>
 
-      {/* BÁSICO */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações básicas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
-            placeholder="Nome"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value)
-              setSlug(makeProductSlug(e.target.value))
-            }}
-          />
-          <Input
-            placeholder="Slug"
-            value={slug}
-            onChange={(e) => setSlug(makeProductSlug(e.target.value))}
-          />
-          <Textarea
-            placeholder="Descrição"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full max-w-full resize-y overflow-x-hidden whitespace-pre-wrap break-all"
-          />
-          <Input
-            type="number"
-            placeholder="Preço base"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          
+          <Card>
+            <CardHeader><CardTitle>Informações Principais</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <Input placeholder="Nome" value={name} onChange={(e) => {setName(e.target.value); setSlug(makeProductSlug(e.target.value))}} />
+              <Input placeholder="Slug" value={slug} onChange={(e) => setSlug(makeProductSlug(e.target.value))} />
+              <Textarea placeholder="Descrição" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
+              <Input type="number" placeholder="Preço" value={price} onChange={(e) => setPrice(e.target.value)} />
+            </CardContent>
+          </Card>
 
-      {/* IMAGENS */}
-      <Card>
-        <CardHeader><CardTitle>Imagens</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <Input type="file" multiple accept="image/*" onChange={handleImageUpload} />
-          <div className="flex gap-2 flex-wrap">
-            {existingImages.map((img, i) => <Badge key={i}>{img}</Badge>)}
-            {images.map((file, i) => <Badge key={i + existingImages.length}>{file.name}</Badge>)}
-          </div>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader><CardTitle>Gerenciar Imagens</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <Label>Novas Imagens</Label>
+              <Input type="file" multiple accept="image/*" onChange={handleNewImageUpload} />
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {/* Imagens que já estão no Cloudinary */}
+                {existingImages.map((url, i) => (
+                  <div key={url} className="relative aspect-square border rounded-lg overflow-hidden group">
+                    <img src={url} className="object-cover w-full h-full" alt="Produto" />
+                    <button type="button" onClick={() => removeExistingImage(url)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"><X size={14}/></button>
+                    <div className="absolute bottom-0 left-0 bg-black/50 text-[10px] text-white px-1">Existente</div>
+                  </div>
+                ))}
+                {/* Previews das novas imagens selecionadas */}
+                {newImageFiles.map((file, i) => (
+                  <div key={i} className="relative aspect-square border-2 border-dashed border-primary rounded-lg overflow-hidden group">
+                    <img src={URL.createObjectURL(file)} className="object-cover w-full h-full opacity-70" alt="Novo" />
+                    <button type="button" onClick={() => removeNewImage(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"><X size={14}/></button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* CATEGORIA */}
-      <Card>
-        <CardHeader><CardTitle>Categoria</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {categories.map((c) => (
-            <label key={c.id} className="flex gap-2 items-center">
-              <input
-                type="radio"
-                checked={categoryId === c.id}
-                onChange={() => setCategoryId(c.id)}
-              />
-              {c.name}
-            </label>
-          ))}
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Variações</CardTitle>
+              <Button type="button" size="sm" onClick={addVariation}><Plus size={16} className="mr-1"/> Add</Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {variations.map((v) => (
+                <div key={v.tempId} className="grid grid-cols-2 md:grid-cols-5 gap-3 p-3 border rounded-lg bg-slate-50">
+                  <Input placeholder="Tam" value={v.size} onChange={(e) => updateVariation(v.tempId, "size", e.target.value)} />
+                  <Input placeholder="Cor" value={v.color} onChange={(e) => updateVariation(v.tempId, "color", e.target.value)} />
+                  <Input placeholder="SKU" value={v.sku} onChange={(e) => updateVariation(v.tempId, "sku", e.target.value)} />
+                  <Input type="number" placeholder="Estoque" value={v.stock} onChange={(e) => updateVariation(v.tempId, "stock", Number(e.target.value))} />
+                  <Button type="button" variant="ghost" onClick={() => setVariations(prev => prev.filter(item => item.tempId !== v.tempId))}><Trash2 size={16} className="text-red-500"/></Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* VARIAÇÕES */}
-      <Card>
-        <CardHeader><CardTitle>Variações</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          {variations.map((v, i) => (
-            <div key={i} className="grid md:grid-cols-6 gap-2 border p-3 rounded">
-              <Input placeholder="Tamanho" value={v.size} onChange={(e) => updateVariation(i, "size", e.target.value)} />
-              <Input placeholder="Cor" value={v.color} onChange={(e) => updateVariation(i, "color", e.target.value)} />
-              <Input placeholder="SKU" value={v.sku} onChange={(e) => updateVariation(i, "sku", e.target.value)} />
-              <Input type="number" placeholder="Estoque" value={v.stock} onChange={(e) => updateVariation(i, "stock", Number(e.target.value))} />
-              <Input type="number" placeholder="Dif. preço" value={v.priceDiff} onChange={(e) => updateVariation(i, "priceDiff", Number(e.target.value))} />
-              <Button type="button" variant="destructive" onClick={() => removeVariation(i)}>Remover</Button>
-            </div>
-          ))}
-          <Button type="button" onClick={addVariation}>Adicionar variação</Button>
-        </CardContent>
-      </Card>
+        <div className="space-y-8">
+          <Card>
+            <CardHeader><CardTitle>Categoria</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {categories.map((c) => (
+                <label key={c.id} className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="category" checked={categoryId === c.id} onChange={() => setCategoryId(c.id)} className="accent-black" />
+                  <span className="text-sm">{c.name}</span>
+                </label>
+              ))}
+            </CardContent>
+          </Card>
 
-      {/* DIMENSÕES */}
-      <Card>
-        <CardHeader><CardTitle>Dimensões</CardTitle></CardHeader>
-        <CardContent className="space-y-2 grid md:grid-cols-2 gap-4">
-          <Input placeholder="Peso (kg)" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} />
-          <Input placeholder="Altura (cm)" type="number" value={height} onChange={(e) => setHeight(e.target.value)} />
-          <Input placeholder="Largura (cm)" type="number" value={width} onChange={(e) => setWidth(e.target.value)} />
-          <Input placeholder="Comprimento (cm)" type="number" value={length} onChange={(e) => setLength(e.target.value)} />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader><CardTitle>Dimensões de Frete</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1"><Label className="text-xs">Peso (kg)</Label><Input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
+                <div className="space-y-1"><Label className="text-xs">Altura (cm)</Label><Input type="number" value={height} onChange={(e) => setHeight(e.target.value)} /></div>
+                <div className="space-y-1"><Label className="text-xs">Largura (cm)</Label><Input type="number" value={width} onChange={(e) => setWidth(e.target.value)} /></div>
+                <div className="space-y-1"><Label className="text-xs">Comprimento (cm)</Label><Input type="number" value={length} onChange={(e) => setLength(e.target.value)} /></div>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* FLAGS */}
-      <Card>
-        <CardHeader><CardTitle>Configurações</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex justify-between"><Label>Ativo</Label><Switch checked={active} onCheckedChange={setActive} /></div>
-          <div className="flex justify-between"><Label>Destaque</Label><Switch checked={featured} onCheckedChange={setFeatured} /></div>
-          <div className="flex justify-between"><Label>Mais vendido</Label><Switch checked={bestSeller} onCheckedChange={setBestSeller} /></div>
-        </CardContent>
-      </Card>
-
-      {/* AÇÕES */}
-      <div className="flex gap-3">
-        <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar alterações"}</Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>
+          <Card>
+            <CardHeader><CardTitle>Visibilidade</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center"><Label>Ativo</Label><Switch checked={active} onCheckedChange={setActive} /></div>
+              <div className="flex justify-between items-center"><Label>Destaque</Label><Switch checked={featured} onCheckedChange={setFeatured} /></div>
+              <div className="flex justify-between items-center"><Label>Mais Vendido</Label><Switch checked={bestSeller} onCheckedChange={setBestSeller} /></div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </form>
   )
