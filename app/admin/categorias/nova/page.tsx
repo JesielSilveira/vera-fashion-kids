@@ -29,7 +29,7 @@ export default function NewCategoryPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!name || !file) {
+    if (!name.trim() || !file) {
       return alert("Nome e imagem são obrigatórios")
     }
 
@@ -45,10 +45,16 @@ export default function NewCategoryPage() {
         body: formData,
       })
 
-      const uploadText = await uploadRes.text()
-      if (!uploadRes.ok) throw new Error(uploadText)
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json()
+        throw new Error(err.error || "Erro no upload da imagem")
+      }
 
-      const uploadData = JSON.parse(uploadText)
+      const uploadData = await uploadRes.json()
+
+      if (!uploadData.url) {
+        throw new Error("Upload não retornou URL da imagem")
+      }
 
       // 2️⃣ Criar categoria
       const res = await fetch("/api/admin/categories", {
@@ -58,13 +64,17 @@ export default function NewCategoryPage() {
           name: name.trim(),
           slug: slug || makeProductSlug(name),
           active,
-          image: uploadData.url, // ✅ URL do Cloudinary
+          image: uploadData.url, // ✅ URL REAL DO CLOUDINARY
         }),
       })
 
-      if (!res.ok) throw new Error("Erro ao criar categoria")
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Erro ao criar categoria")
+      }
 
       router.push("/admin/categorias")
+      router.refresh()
     } catch (err: any) {
       alert(err.message || "Erro inesperado")
     } finally {
@@ -103,6 +113,7 @@ export default function NewCategoryPage() {
             {preview && (
               <img
                 src={preview}
+                alt="Preview"
                 className="mt-2 h-40 w-40 object-cover rounded-lg border"
               />
             )}
@@ -115,7 +126,7 @@ export default function NewCategoryPage() {
         </CardContent>
       </Card>
 
-      <Button disabled={loading}>
+      <Button type="submit" disabled={loading}>
         {loading ? "Salvando..." : "Salvar categoria"}
       </Button>
     </form>
