@@ -52,9 +52,14 @@ export default function NewBannerPage() {
         body: formData,
       })
 
-      const uploadData = await uploadRes.json()
-      if (!uploadRes.ok) throw new Error(uploadData.error)
+      const text = await uploadRes.text()
 
+      if (!uploadRes.ok) {
+        console.error("Erro upload:", text)
+        throw new Error("Falha no upload da imagem")
+      }
+
+      const uploadData = JSON.parse(text)
       // 2️⃣ Criar banner
       const res = await fetch("/api/admin/banners", {
         method: "POST",
