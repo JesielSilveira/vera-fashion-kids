@@ -3,10 +3,37 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import slugify from "slugify"
+import { v2 as cloudinary } from "cloudinary"
+
+// 🔹 Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+
+    if (!body.name) {
+      return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 })
+    }
+
+    // 🔹 Upload das imagens para Cloudinary
+    let uploadedImages: string[] = []
+    if (Array.isArray(body.images) && body.images.length > 0) {
+      for (const base64 of body.images) {
+        // base64 do frontend: "data:image/png;base64,AAA..."
+        const result = await new Promise<any>((resolve, reject) => {
+          cloudinary.uploader.upload(base64, { folder: "products" }, (err, res) => {
+            if (err) reject(err)
+            else resolve(res)
+          })
+        })
+        uploadedImages.push(result.secure_url)
+      }
+    }
 
     // 🔹 Cria slug automaticamente se não vier do frontend
     const slug =
@@ -20,7 +47,8 @@ export async function POST(req: Request) {
         price: Number(body.price ?? 0),
         description: body.description ?? "",
 
-        images: Array.isArray(body.images) ? body.images : [],
+        // ✅ Usa as URLs do Cloudinary
+        images: uploadedImages,
         sizes: Array.isArray(body.sizes) ? body.sizes : [],
         colors: Array.isArray(body.colors) ? body.colors : [],
         stock: Number(body.stock ?? 0),
