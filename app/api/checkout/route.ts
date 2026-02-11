@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const { items, userEmail, userId, address } = await req.json();
 
     if (!items || items.length === 0) return NextResponse.json({ error: "Carrinho vazio" }, { status: 400 });
-    if (!userId) return NextResponse.json({ error: "Utilizador não identificado" }, { status: 401 });
+    if (!userId) return NextResponse.json({ error: "Usuário não identificado" }, { status: 401 });
 
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item: any) => ({
       price_data: {
@@ -28,14 +28,14 @@ export async function POST(req: Request) {
       line_items: lineItems,
       metadata: {
         userId: userId,
-        // Guardamos os dados para o OrderItem (id, quantidade, preço)
+        // Enviamos os detalhes dos itens para o Webhook processar
         productData: JSON.stringify(items.map((i: any) => ({
-          id: i.id, // 👈 Este ID tem de ser o CUID que está na tabela Product
-          q: i.quantity,
-          p: i.price,
-          n: i.name
-        }))).slice(0, 450),
-        address: typeof address === 'object' ? JSON.stringify(address).slice(0, 450) : String(address || "").slice(0, 450),
+          productId: i.id, // ID que deve bater com o banco
+          quantity: i.quantity,
+          price: i.price,
+          name: i.name
+        }))).slice(0, 450), // Limite de caracteres do Stripe
+        address: typeof address === 'object' ? JSON.stringify(address) : String(address || ""),
       },
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?sessionId={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/carrinho`,

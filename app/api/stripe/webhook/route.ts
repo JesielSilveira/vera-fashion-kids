@@ -23,34 +23,42 @@ export async function POST(req: Request) {
     const productData = JSON.parse(session.metadata?.productData || "[]");
 
     try {
+      // 1. Buscamos todos os IDs de produtos que realmente existem no banco agora
+      const existingProducts = await prisma.product.findMany({
+        where: { id: { in: productData.map((p: any) => p.productId) } },
+        select: { id: true }
+      });
+      const validIds = existingProducts.map(p => p.id);
+
+      // 2. Criamos o pedido
       const newOrder = await prisma.order.create({
         data: {
           userId: userId,
           stripeSessionId: session.id,
           total: session.amount_total / 100,
           status: "PAID",
-          shippingAddress: session.metadata?.address || "Endereço via Stripe",
+          shippingAddress: session.metadata?.address || "",
           items: {
             create: productData.map((item: any) => ({
-              // 🛡️ PROTEÇÃO: Só envia o productId se ele for um ID válido no banco.
-              // Se o MySQL der erro aqui, mude para: productId: null 
-              // apenas para testar se o pedido entra na conta.
-              productId: item.id, 
-              name: item.n,
-              quantity: item.q,
-              price: item.p,
+              // 🛡️ A MÁGICA AQUI: 
+              // Se o ID enviado não estiver nos IDs válidos do banco, enviamos NULL.
+              // Isso evita o erro de Foreign Key e o pedido é criado com sucesso!
+              productId: validIds.includes(item.productId) ? item.productId : null,
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price,
             }))
           }
         }
       });
 
-      console.log("✅ PEDIDO CRIADO COM SUCESSO!");
+      console.log("✅ Pedido criado com sucesso! Order ID:", newOrder.id);
       return NextResponse.json({ created: true });
     } catch (dbError: any) {
-      console.error("❌ ERRO NO PRISMA:", dbError.message);
-      // Se der erro de Foreign Key de novo, o ID vindo do Stripe está errado!
+      console.error("❌ Erro fatal no Prisma:", dbError.message);
       return new NextResponse(`Erro Banco: ${dbError.message}`, { status: 500 });
     }
   }
+
   return NextResponse.json({ received: true });
 }
