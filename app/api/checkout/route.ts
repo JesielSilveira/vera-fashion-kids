@@ -24,12 +24,15 @@ export async function POST(req: Request) {
           currency: "brl",
           product_data: {
             name: item.name,
-            metadata: {
-              size: item.size ?? "",
-              color: item.color ?? "",
-            },
           },
           unit_amount: Math.round(item.price * 100),
+          // ✅ CORREÇÃO 1: Mover metadados para o nível do PRICE
+          // O seu webhook tenta ler de item.price.metadata. Se estiver no product_data, ele não acha o productId.
+          metadata: {
+            productId: item.id,
+            size: item.size ?? "",
+            color: item.color ?? "",
+          },
         },
         quantity: item.quantity,
       }))
@@ -42,10 +45,12 @@ export async function POST(req: Request) {
       metadata: {
         userEmail: userEmail ?? "",
         address: JSON.stringify(address ?? {}),
-        cart: JSON.stringify(items),
+        // cart: JSON.stringify(items), // Cuidado: metadados do Stripe têm limite de caracteres.
       },
 
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
+      // ✅ CORREÇÃO 2: Adicionar o session_id na URL de retorno
+      // Sem isso, sua página /success não sabe qual compra pesquisar no banco.
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout`,
     })
 
