@@ -33,24 +33,23 @@ async function handlePay() {
   setLoading(true)
 
   try {
-    const res = await fetch("/api/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userEmail: session?.user?.email ?? null,
+const res = await fetch("/api/checkout", { // 👈 Verifique se sua rota é /api/checkout
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    userEmail: session?.user?.email ?? null,
+    userId: session?.user?.id ?? null, // 🔥 O dono do pedido
 
-        items: items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          size: item.size ?? "",
-          color: item.color ?? "",
-        })),
+    items: items.map((item) => ({
+      id: item.id, // 🔥 O ID do produto no banco
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+    })),
 
-        address,
-      }),
-    })
+    address,
+  }),
+})
 
     if (!res.ok) {
       const err = await res.json()

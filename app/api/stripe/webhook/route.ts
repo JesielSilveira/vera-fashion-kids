@@ -25,38 +25,40 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as any;
+
+    // 1. RECUPERANDO OS DADOS DO METADATA
     const userId = session.metadata?.userId;
     const address = session.metadata?.address || "Endereço não informado";
+    
+    // Transformamos a string de produtos de volta em um array de objetos
+    const productData = JSON.parse(session.metadata?.productData || "[]");
 
     try {
-      // 🚨 IMPORTANTE: Verifique se os nomes abaixo (userId, total, status) 
-      // são EXATAMENTE iguais aos do seu arquivo schema.prisma
+      // 2. CRIANDO O PEDIDO NO BANCO
       const newOrder = await prisma.order.create({
         data: {
-          userId: userId, // Liga o pedido ao usuário logado
+          userId: userId, // ✅ Resolve o erro de Foreign Key do usuário
           stripeSessionId: session.id,
           total: session.amount_total / 100,
           status: "PAID",
           shippingAddress: address,
           items: {
-            create: [{
-              name: "Produto Vendido",
-              quantity: 1,
-              price: session.amount_total / 100,
-              // ⚠️ Se o seu banco exigir productId, o erro continuará até 
-              // você passar um id real de produto aqui:
-              // productId: "ID_REAL_DO_BANCO" 
-            }]
+            // Criamos múltiplos itens baseados no que veio do checkout
+            create: productData.map((item: any) => ({
+              productId: item.id, // ✅ Resolve o erro de Foreign Key do produto
+              quantity: item.q,
+              price: item.p,
+              name: "Produto Adquirido" // Você pode passar o nome no metadata se quiser
+            }))
           }
         }
       });
 
-      console.log("✅ PEDIDO CRIADO:", newOrder.id);
-      return NextResponse.json({ created: true });
+      console.log("✅ SUCESSO: Pedido", newOrder.id, "atribuído ao usuário", userId);
+      return NextResponse.json({ created: true, orderId: newOrder.id });
 
     } catch (dbError: any) {
-      console.error("❌ ERRO DETALHADO NO PRISMA:", dbError.message);
-      // Retornamos o erro para você ver na aba "Response" do Stripe
+      console.error("❌ ERRO NO PRISMA:", dbError.message);
       return new NextResponse(`Erro Prisma: ${dbError.message}`, { status: 500 });
     }
   }
