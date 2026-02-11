@@ -1,57 +1,35 @@
 import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
+import { prisma } from "@/lib/prisma"
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const sessionId = searchParams.get("sessionId")
 
-  // ✅ 0. LIBERAÇÃO CRÍTICA: Ignorar o Webhook do Stripe
-  // O Stripe não envia token, por isso ele SEMPRE seria bloqueado se caísse em qualquer regra.
-  if (pathname.startsWith("/api/webhooks")) {
-    return NextResponse.next()
-  }
-
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  })
-
-  // 1. Proteger rotas de ADMIN (Páginas e APIs)
-  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    
-    if (!token) {
-      console.log("🚫 Bloqueio: Sem token em", pathname)
-      if (pathname.startsWith("/api")) {
-        return new NextResponse(JSON.stringify({ error: "Não autorizado" }), { status: 401 })
-      }
-      return NextResponse.redirect(new URL("/login", req.url))
+    if (!sessionId) {
+      return NextResponse.json({ error: "Session ID ausente" }, { status: 400 })
     }
 
-    const userRole = String(token.role || "").toLowerCase()
-    if (userRole !== "admin") {
-      console.log("🚫 Bloqueio: Role insuficiente:", userRole)
-      if (pathname.startsWith("/api")) {
-        return new NextResponse(JSON.stringify({ error: "Acesso negado" }), { status: 403 })
-      }
-      return NextResponse.redirect(new URL("/", req.url))
+    // Buscamos o pedido pelo ID da sessão que o Stripe gerou
+    const order = await prisma.order.findUnique({
+      where: { 
+        stripeSessionId: sessionId 
+      },
+      include: { 
+        items: true // Importante para a página de sucesso mostrar os produtos
+      } 
+    })
+
+    if (!order) {
+      // Retornamos 404 enquanto o Webhook ainda não salvou no banco.
+      // A sua página de sucesso vai entender isso e tentar de novo em 2 segundos.
+      return new NextResponse("Aguardando processamento...", { status: 404 })
     }
+
+    // Se achou, retorna o pedido completo!
+    return NextResponse.json(order)
+  } catch (error) {
+    console.error("❌ Erro na rota de check:", error)
+    return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 })
   }
-
-  // 2. Proteger Checkout
-  if (pathname.startsWith("/checkout")) {
-    if (!token) {
-      return NextResponse.redirect(new URL("/login", req.url))
-    }
-  }
-
-  return NextResponse.next()
-}
-
-export const config = {
-  matcher: [
-    "/checkout/:path*", 
-    "/admin/:path*", 
-    "/api/admin/:path*",
-    "/api/webhooks/:path*" // ✅ Adicionamos aqui para o middleware saber que ele deve olhar essa rota (e liberar no if acima)
-  ],
 }
