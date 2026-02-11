@@ -49,7 +49,7 @@ function MinhaContaContent() {
   async function fetchOrders() {
     try {
       // ATENÇÃO: Verifique se /api/admin/orders filtra por usuário logado!
-      const res = await fetch("/api/admin/orders") 
+      const res = await fetch("/api/orders") 
       if (!res.ok) throw new Error("Falha ao buscar pedidos")
       const data: Order[] = await res.json()
       setOrders(data)
