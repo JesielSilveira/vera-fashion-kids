@@ -56,7 +56,7 @@ export default function OrdersPage() {
   async function loadOrders(isSilent = false) {
     try {
       if (!isSilent) setLoading(true)
-      const res = await fetch("/api/admin/orders")
+      const res = await fetch("/api/orders")
       if (!res.ok) throw new Error("Erro ao carregar pedidos")
       const data: Order[] = await res.json()
       
@@ -104,7 +104,7 @@ export default function OrdersPage() {
     data: Partial<{ status: Order["status"]; tracking: string }>
   ) {
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}`, {
+      const res = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
