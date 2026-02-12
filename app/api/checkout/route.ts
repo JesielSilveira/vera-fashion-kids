@@ -2,18 +2,13 @@ export const dynamic = 'force-dynamic';
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16" as any,
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2023-10-16" as any });
 
 export async function POST(req: Request) {
   try {
-    const { items, userEmail, userId, address } = await req.json();
+    const { items, userId, address, phone } = await req.json();
 
-    if (!items || items.length === 0) return NextResponse.json({ error: "Carrinho vazio" }, { status: 400 });
-    if (!userId) return NextResponse.json({ error: "Usuário não identificado" }, { status: 401 });
-
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item: any) => ({
+    const lineItems = items.map((item: any) => ({
       price_data: {
         currency: "brl",
         unit_amount: Math.round(item.price * 100),
@@ -27,15 +22,18 @@ export async function POST(req: Request) {
       payment_method_types: ["card"],
       line_items: lineItems,
       metadata: {
-        userId: userId,
-        // Enviamos os detalhes dos itens para o Webhook processar
+        userId,
+        phone: phone || "", 
+        address: typeof address === 'object' ? JSON.stringify(address) : String(address),
+        // Passamos ID, Quantidade, Preço, Tamanho e Cor
         productData: JSON.stringify(items.map((i: any) => ({
-          productId: i.id, // ID que deve bater com o banco
-          quantity: i.quantity,
-          price: i.price,
-          name: i.name
-        }))).slice(0, 450), // Limite de caracteres do Stripe
-        address: typeof address === 'object' ? JSON.stringify(address) : String(address || ""),
+          id: i.id,
+          q: i.quantity,
+          p: i.price,
+          n: i.name,
+          s: i.size || "", // Variação de Tamanho
+          c: i.color || "" // Variação de Cor
+        }))).slice(0, 450),
       },
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?sessionId={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/carrinho`,
