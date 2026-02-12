@@ -29,49 +29,49 @@ export default function CheckoutPage() {
     0
   )
 
-async function handlePay() {
-  setLoading(true)
+  async function handlePay() {
+    setLoading(true)
 
-  try {
-const res = await fetch("/api/checkout", { // 👈 Verifique se sua rota é /api/checkout
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    userEmail: session?.user?.email ?? null,
-    userId: session?.user?.id ?? null, // 🔥 O dono do pedido
+    try {
+      const res = await fetch("/api/checkout", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userEmail: session?.user?.email ?? null,
+          userId: session?.user?.id ?? null,
 
-    items: items.map((item) => ({
-      id: item.id, // 🔥 O ID do produto no banco
-      name: item.name,
-      quantity: item.quantity,
-      price: item.price,
-    })),
+          // 🚀 CORREÇÃO AQUI: Incluindo size e color no envio para a API
+          items: items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            size: item.size ?? "",  // 👈 Crucial para o Admin
+            color: item.color ?? "", // 👈 Crucial para o Admin
+          })),
 
-    address,
-  }),
-})
+          address,
+        }),
+      })
 
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error ?? "Erro checkout")
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? "Erro checkout")
+      }
+
+      const { url } = await res.json()
+      window.location.href = url
+    } catch (err) {
+      console.error(err)
+      alert("Erro ao iniciar pagamento")
+      setLoading(false)
     }
-
-    const { url } = await res.json()
-    window.location.href = url
-  } catch (err) {
-    console.error(err)
-    alert("Erro ao iniciar pagamento")
-    setLoading(false)
   }
-}
-
 
   if (items.length === 0) {
     return (
       <section className="mx-auto max-w-4xl px-4 py-16 text-center">
-        <h1 className="mb-4 text-3xl font-bold">
-          Seu carrinho está vazio
-        </h1>
+        <h1 className="mb-4 text-3xl font-bold">Seu carrinho está vazio</h1>
         <Link href="/">
           <Button>Voltar para a loja</Button>
         </Link>
@@ -84,7 +84,6 @@ const res = await fetch("/api/checkout", { // 👈 Verifique se sua rota é /api
       <h1 className="mb-8 text-3xl font-bold">Checkout</h1>
 
       <div className="grid md:grid-cols-3 gap-8">
-
         {/* ENDEREÇO */}
         <div className="md:col-span-2 space-y-4">
           <Input placeholder="Nome completo"
@@ -115,13 +114,17 @@ const res = await fetch("/api/checkout", { // 👈 Verifique se sua rota é /api
 
           <div className="space-y-2 text-sm">
             {items.map((item, i) => (
-              <div key={i} className="flex justify-between">
-                <span>
-                  {item.name} x{item.quantity}
-                </span>
-                <span>
-                  R$ {(item.price * item.quantity).toFixed(2)}
-                </span>
+              <div key={i} className="flex flex-col border-b pb-2 last:border-0">
+                <div className="flex justify-between font-medium">
+                  <span>{item.name} x{item.quantity}</span>
+                  <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+                {/* Visualização da variação no resumo para conferência */}
+                {(item.size || item.color) && (
+                  <span className="text-xs text-muted-foreground uppercase">
+                    {item.size} {item.size && item.color && "|"} {item.color}
+                  </span>
+                )}
               </div>
             ))}
           </div>
