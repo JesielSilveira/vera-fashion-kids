@@ -1,20 +1,21 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Search, MapPin, Package, Phone, Mail } from "lucide-react"
+import { Search, MapPin, Package, Mail } from "lucide-react"
 
-// --- Tipagens Alinhadas com seu Banco ---
+// Tipagem atualizada para refletir o que vem do seu Banco/Webhook
 type OrderItem = {
   id: string
   name: string
   quantity: number
   price: number
-  size?: string | null
-  color?: string | null
+  size?: string | null  // Pode vir direto
+  color?: string | null // Pode vir direto
+  variation?: any       // Ou pode vir dentro do campo JSON
   isFrete: boolean
 }
 
@@ -50,12 +51,11 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   async function loadOrders(isSilent = false) {
     try {
       if (!isSilent) setLoading(true)
-      const res = await fetch("/api/orders") // 👈 Certifique-se que essa rota retorna include: { items: true, user: true }
+      const res = await fetch("/api/orders")
       if (!res.ok) throw new Error("Erro ao carregar")
       const data = await res.json()
       setOrders(data)
@@ -68,7 +68,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     loadOrders()
-    const interval = setInterval(() => loadOrders(true), 10000)
+    const interval = setInterval(() => loadOrders(true), 15000)
     return () => clearInterval(interval)
   }, [])
 
@@ -79,11 +79,10 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
-      if (!res.ok) throw new Error("Erro ao atualizar")
-      
+      if (!res.ok) throw new Error("Erro")
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...data } : o))
     } catch (err) {
-      alert("Falha ao atualizar pedido")
+      alert("Falha ao atualizar")
     }
   }
 
@@ -93,7 +92,7 @@ export default function OrdersPage() {
     o.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  if (loading && orders.length === 0) return <div className="p-10 text-center">Carregando painel de pedidos...</div>
+  if (loading && orders.length === 0) return <div className="p-10 text-center">Carregando pedidos...</div>
 
   return (
     <section className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -102,7 +101,7 @@ export default function OrdersPage() {
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input 
-            placeholder="Buscar por ID, nome ou email..." 
+            placeholder="Buscar pedido..." 
             className="pl-10" 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -120,8 +119,10 @@ export default function OrdersPage() {
                     Pedido #{order.id.slice(-8).toUpperCase()}
                   </CardTitle>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                    <span className="flex items-center gap-1 font-semibold"><Mail className="w-3 h-3"/> {order.user?.email || "Email não cadastrado"}</span>
-                    <span className="text-gray-400">{new Date(order.createdAt).toLocaleString('pt-BR')}</span>
+                    <span className="flex items-center gap-1 font-semibold text-pink-700">
+                       {order.user?.name || "Cliente Vera Fashion"}
+                    </span>
+                    <span className="flex items-center gap-1"><Mail className="w-3 h-3"/> {order.user?.email}</span>
                   </div>
                 </div>
                 <Badge className={statusColors[order.status] || "bg-gray-400"}>
@@ -131,68 +132,65 @@ export default function OrdersPage() {
             </CardHeader>
 
             <CardContent className="p-6 space-y-6">
-              {/* BLOCO LOGÍSTICA */}
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-gray-400 uppercase flex items-center gap-2">
-                    <MapPin className="w-3 h-3"/> Endereço de Entrega
+                    <MapPin className="w-3 h-3"/> Entrega
                   </h4>
-                  <p className="text-sm bg-gray-50 p-3 rounded-md border text-gray-700 leading-relaxed">
-                    {order.shippingAddress || "Endereço não informado no checkout"}
+                  <p className="text-sm bg-gray-50 p-3 rounded-md border text-gray-700">
+                    {order.shippingAddress}
                   </p>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase">Alterar Status</label>
-                      <Select 
-                        value={order.status} 
-                        onValueChange={(val) => updateOrder(order.id, { status: val })}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(statusLabels).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{v}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase">Rastreio</label>
-                      <Input 
-                        placeholder="Código..." 
-                        defaultValue={order.tracking || ""}
-                        onBlur={(e) => updateOrder(order.id, { tracking: e.target.value })}
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">Status</label>
+                    <Select value={order.status} onValueChange={(v) => updateOrder(order.id, { status: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">Rastreio</label>
+                    <Input 
+                      placeholder="Cód..." 
+                      defaultValue={order.tracking || ""}
+                      onBlur={(e) => updateOrder(order.id, { tracking: e.target.value })}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* LISTA DE PRODUTOS */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-gray-400 uppercase flex items-center gap-2">
-                  <Package className="w-3 h-3"/> Itens do Pedido
+                  <Package className="w-3 h-3"/> Itens
                 </h4>
-                <div className="border rounded-lg divide-y">
-                  {order.items.map((item) => (
-                    <div key={item.id} className="p-3 flex justify-between items-center text-sm">
-                      <div>
-                        <span className="font-bold text-pink-600">{item.quantity}x</span> {item.name}
-                        <div className="flex gap-2 mt-1">
-                          {item.size && <Badge variant="secondary" className="text-[10px] py-0">TAM: {item.size}</Badge>}
-                          {item.color && <Badge variant="secondary" className="text-[10px] py-0">COR: {item.color}</Badge>}
+                <div className="border rounded-lg divide-y bg-white">
+                  {order.items.map((item) => {
+                    // 🚀 LÓGICA PARA EXTRAIR VARIACAO DO JSON OU CAMPOS DIRETOS
+                    const displaySize = item.size || item.variation?.size;
+                    const displayColor = item.color || item.variation?.color;
+
+                    return (
+                      <div key={item.id} className="p-3 flex justify-between items-center text-sm">
+                        <div className="flex flex-col">
+                          <p><span className="font-bold text-pink-600">{item.quantity}x</span> {item.name}</p>
+                          <div className="flex gap-2 mt-1">
+                            {displaySize && <Badge variant="outline" className="text-[10px] bg-slate-50 border-pink-200">TAM: {displaySize}</Badge>}
+                            {displayColor && <Badge variant="outline" className="text-[10px] bg-slate-50 border-blue-200">COR: {displayColor}</Badge>}
+                          </div>
                         </div>
+                        <span className="font-semibold">R$ {(item.price * item.quantity).toFixed(2)}</span>
                       </div>
-                      <span className="font-semibold">R$ {(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
-              <div className="flex justify-between items-end pt-4 border-t">
-                <span className="text-gray-500 font-medium">Total Pago</span>
+              <div className="flex justify-between items-center pt-4 border-t">
+                <span className="text-gray-500 font-bold">TOTAL PAGO</span>
                 <span className="text-2xl font-black text-green-600">R$ {order.total.toFixed(2)}</span>
               </div>
             </CardContent>
