@@ -14,63 +14,62 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch (err: any) { 
+    console.error("Webhook Signature Error:", err.message);
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 }); 
   }
 
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.data.object as any;
     
-    // 1. Extrair os metadados enviados pelo checkout
-    const productData = JSON.parse(session.metadata?.productData || "[]");
+    // 1. Parse seguro dos metadados
+    let productData = [];
+    try {
+      productData = JSON.parse(session.metadata?.productData || "[]");
+    } catch (e) {
+      console.error("Erro ao dar parse no productData");
+    }
+
     const userId = session.metadata?.userId;
-    const address = session.metadata?.address || "Não informado";
-    const phone = session.metadata?.phone || "Não informado";
 
     try {
-      // 2. Filtrar IDs para evitar erro de FK (Foreign Key) caso seja um item de frete
-      const idsParaValidar = productData
-        .filter((p: any) => p.id && !p.id.includes("frete"))
-        .map((p: any) => p.id);
-
-      const existingProducts = await prisma.product.findMany({
-        where: { id: { in: idsParaValidar } },
-        select: { id: true }
-      });
-      
-      const validIds = existingProducts.map(p => p.id);
-
-      // 3. Criar o Pedido e os Itens
-      await prisma.order.create({
+      // 2. Criar o pedido usando os nomes exatos do seu Schema
+      const newOrder = await prisma.order.create({
         data: {
-          userId: userId,
+          // Se o userId não existir ou for "guest", deixamos null (seu schema permite User?)
+          userId: userId && userId !== "guest" ? userId : null,
           stripeSessionId: session.id,
           total: (session.amount_total || 0) / 100,
-          status: "PAID",
-          shippingAddress: `${address} | Tel: ${phone}`,
+          status: "PAID", // Status inicial após pagamento
+          shippingAddress: session.metadata?.address || "Não informado",
+          // Nota: adicionei fallback para shippingPrice se você tiver o dado
+          shippingPrice: 0, 
           items: {
             create: productData.map((item: any) => ({
-              // Se o ID for válido no banco, conecta, senão deixa null (ex: frete)
-              productId: validIds.includes(item.id) ? item.id : null,
               name: item.n,
               quantity: item.q,
               price: item.p,
-              // 🚀 AQUI ESTÁ O SEGREDO DO JSON:
-              // Salvamos tamanho e cor dentro de um único campo objeto JSON
-              variation: {
-                size: item.s || null,
-                color: item.c || null
-              }
+              size: item.s || null,
+              color: item.c || null,
+              // 🚀 O PULO DO GATO: Definindo se é frete ou produto real
+              isFrete: item.id === "frete-pac" || item.id === "frete-sedex" || !!item.f,
+              // Só conecta o productId se ele não for um item de frete
+              productId: (item.id && !item.id.includes("frete")) ? item.id : null,
             }))
           }
         }
       });
 
-      console.log(`✅ Pedido criado com sucesso para a sessão: ${session.id}`);
+      console.log("✅ Pedido criado com sucesso no MySQL:", newOrder.id);
       return NextResponse.json({ created: true });
 
-    } catch (error: any) {
-      console.error("❌ Erro ao processar banco de dados:", error.message);
-      return new NextResponse("Database Error", { status: 500 });
+    } catch (dbError: any) {
+      // Isso vai imprimir o erro exato do Prisma no seu console
+      console.error("❌ ERRO CRÍTICO NO BANCO:");
+      console.dir(dbError, { depth: null });
+      
+      // Retornamos 500 para o Stripe saber que houve erro, 
+      // mas os logs acima te dirão se falta algum campo.
+      return new NextResponse(`Database Error: ${dbError.message}`, { status: 500 });
     }
   }
 
