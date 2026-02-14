@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import Image from "next/image"
 import { AddToCartButton } from "@/app/_components/cart/add-to-cart-button"
 import { Button } from "@/components/ui/button"
+import { ChevronDown, ChevronUp } from "lucide-react" // Import opcional para ícones
 
 type Variation = {
   id: string
@@ -47,7 +48,6 @@ export default function ProductClient({
   product: ProductClientProduct
   relatedProducts: ProductClientProduct[]
 }) {
-  // converte imagens para o formato {url: string} uniformemente
   const images: ProductImage[] = product.images.map(img =>
     typeof img === "string" ? { url: img } : img
   )
@@ -71,6 +71,7 @@ export default function ProductClient({
   const [mainImage, setMainImage] = useState<string>(images[0]?.url ?? "")
   const [selectedSize, setSelectedSize] = useState<string | undefined>()
   const [selectedColor, setSelectedColor] = useState<string | undefined>()
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
   const selectedVariation = product.variations.find(
     v =>
@@ -79,10 +80,6 @@ export default function ProductClient({
   )
 
   const finalPrice = product.price + (selectedVariation?.priceDiff ?? 0)
-
-  const canAddToCart =
-    product.variations.length === 0 ||
-    (selectedVariation && selectedVariation.stock > 0)
 
   const productForCart = {
     id: product.id,
@@ -94,6 +91,7 @@ export default function ProductClient({
     colors,
   }
 
+  // Componente de formulário movido para dentro ou mantido conforme sua estrutura
   function ReviewForm({ productId }: { productId: string }) {
     const [name, setName] = useState("")
     const [rating, setRating] = useState(5)
@@ -110,9 +108,7 @@ export default function ProductClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ productId, name, rating, comment }),
         })
-
         if (!res.ok) throw new Error("Erro ao enviar avaliação")
-
         setSuccess(true)
         setName("")
         setRating(5)
@@ -127,33 +123,13 @@ export default function ProductClient({
     }
 
     return (
-      <form onSubmit={handleSubmit} className="border rounded-xl p-4 space-y-4">
+      <form onSubmit={handleSubmit} className="border rounded-xl p-4 space-y-4 mt-6">
         <h3 className="font-bold text-lg">Avaliar este produto</h3>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Seu nome"
-          required
-          className="w-full border rounded px-3 py-2"
-        />
-        <select
-          value={rating}
-          onChange={e => setRating(Number(e.target.value))}
-          className="w-full border rounded px-3 py-2"
-        >
-          {[5, 4, 3, 2, 1].map(r => (
-            <option key={r} value={r}>
-              {r} ⭐
-            </option>
-          ))}
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" required className="w-full border rounded px-3 py-2" />
+        <select value={rating} onChange={e => setRating(Number(e.target.value))} className="w-full border rounded px-3 py-2">
+          {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r} ⭐</option>)}
         </select>
-        <textarea
-          value={comment}
-          onChange={e => setComment(e.target.value)}
-          placeholder="Comentário"
-          required
-          className="w-full border rounded px-3 py-2"
-        />
+        <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Comentário" required className="w-full border rounded px-3 py-2" />
         <Button disabled={loading}>{loading ? "Enviando..." : "Enviar avaliação"}</Button>
         {success && <p className="text-green-600 text-sm">Avaliação enviada com sucesso!</p>}
       </form>
@@ -165,9 +141,15 @@ export default function ProductClient({
       <div className="grid lg:grid-cols-2 gap-12">
         {/* GALERIA */}
         <div className="space-y-6">
-          <div className="relative h-[520px] w-full overflow-hidden rounded-3xl border bg-gray-50">
+          <div className="relative h-[520px] w-full overflow-hidden rounded-3xl border bg-white">
             {mainImage ? (
-              <Image src={mainImage} alt={product.name} fill className="object-cover" priority />
+              <Image 
+                src={mainImage} 
+                alt={product.name} 
+                fill 
+                className="object-contain p-4" // object-contain faz a imagem aparecer inteira
+                priority 
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-gray-400">Sem imagem</div>
             )}
@@ -179,11 +161,11 @@ export default function ProductClient({
                 <button
                   key={img.url}
                   onClick={() => setMainImage(img.url)}
-                  className={`relative h-28 rounded-xl overflow-hidden border ${
+                  className={`relative h-28 rounded-xl overflow-hidden border bg-white ${
                     mainImage === img.url ? "border-black" : "border-gray-200"
                   }`}
                 >
-                  <Image src={img.url} alt={product.name} fill className="object-cover" />
+                  <Image src={img.url} alt={product.name} fill className="object-contain p-2" />
                 </button>
               ))}
             </div>
@@ -197,6 +179,30 @@ export default function ProductClient({
 
           <AddToCartButton product={productForCart} />
 
+          {/* DESCRIÇÃO COM VER MAIS */}
+          {product.description && (
+            <div className="border-t pt-6">
+              <h2 className="font-semibold mb-2">Descrição</h2>
+              <div className="relative">
+                <p className={`text-gray-600 transition-all ${!isDescriptionExpanded && product.description.length > 200 ? 'line-clamp-3' : ''}`}>
+                  {product.description}
+                </p>
+                {product.description.length > 200 && (
+                  <button 
+                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                    className="text-black font-bold mt-2 text-sm flex items-center hover:underline"
+                  >
+                    {isDescriptionExpanded ? (
+                      <>Ver menos <ChevronUp className="ml-1 h-4 w-4" /></>
+                    ) : (
+                      <>Ver mais <ChevronDown className="ml-1 h-4 w-4" /></>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {(product.weight || product.height || product.width || product.length) && (
             <div className="p-4 border rounded-xl bg-gray-50">
               <h2 className="font-semibold mb-2">Dimensões</h2>
@@ -206,13 +212,6 @@ export default function ProductClient({
                 {product.width && <li>Largura: {product.width} cm</li>}
                 {product.length && <li>Comprimento: {product.length} cm</li>}
               </ul>
-            </div>
-          )}
-
-          {product.description && (
-            <div>
-              <h2 className="font-semibold mb-1">Descrição</h2>
-              <p className="text-gray-600">{product.description}</p>
             </div>
           )}
 
@@ -236,19 +235,26 @@ export default function ProductClient({
       {relatedProducts.length > 0 && (
         <div className="space-y-6">
           <h2 className="text-2xl font-bold">Você também pode gostar</h2>
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {relatedProducts.map(p => {
               const img = p.images[0]
               const url = typeof img === "string" ? img : img?.url ?? ""
               return (
-                <div key={p.id} className="border rounded-xl p-3">
-                  {url ? (
-                    <Image src={url} alt={p.name} width={200} height={200} className="object-cover rounded" />
-                  ) : (
-                    <div className="w-full h-48 flex items-center justify-center bg-gray-100 text-gray-400 rounded">Sem imagem</div>
-                  )}
-                  <h3 className="font-semibold mt-2">{p.name}</h3>
-                  <p className="text-green-600 font-bold">R$ {p.price.toFixed(2)}</p>
+                <div key={p.id} className="border rounded-xl p-3 bg-white">
+                  <div className="relative h-48 w-full mb-2">
+                    {url ? (
+                      <Image 
+                        src={url} 
+                        alt={p.name} 
+                        fill 
+                        className="object-contain rounded" 
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 rounded">Sem imagem</div>
+                    )}
+                  </div>
+                  <h3 className="font-semibold text-sm truncate">{p.name}</h3>
+                  <p className="text-black font-bold">R$ {p.price.toFixed(2)}</p>
                 </div>
               )
             })}
@@ -258,4 +264,3 @@ export default function ProductClient({
     </div>
   )
 }
-
