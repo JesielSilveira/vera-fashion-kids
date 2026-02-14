@@ -160,7 +160,7 @@ export default function NewProductPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 max-w-6xl mx-auto pb-20 p-4">
+    <form onSubmit={handleSubmit} className="space-y-8 max-w-6xl mx-auto pb-20 p-4 overflow-x-hidden">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Novo Produto</h1>
@@ -177,7 +177,7 @@ export default function NewProductPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-8 min-w-0"> {/* min-w-0 evita quebra de layout lateral */}
           
           <Card className="border-2 shadow-sm">
             <CardHeader><CardTitle className="text-lg">Informações Gerais</CardTitle></CardHeader>
@@ -195,13 +195,21 @@ export default function NewProductPage() {
                   }}
                 />
               </div>
+
+              {/* SLUG CORRIGIDO PARA NÃO CORTAR E NÃO IR PARA O LADO */}
+              <div className="grid gap-2">
+                <Label className="text-[10px] uppercase font-bold text-gray-400">Link do Produto (Slug)</Label>
+                <div className="p-3 bg-slate-50 border rounded-md text-sm text-zinc-500 break-all font-mono">
+                  {slug || "O link será gerado automaticamente..."}
+                </div>
+              </div>
               
               <div className="grid gap-2">
                 <Label htmlFor="description" className="font-bold">Descrição (Respeita parágrafos)</Label>
                 <Textarea
                   id="description"
                   rows={8}
-                  className="min-h-[200px] leading-relaxed resize-y"
+                  className="min-h-[200px] leading-relaxed resize-y whitespace-pre-wrap" // whitespace-pre-wrap essencial para o dono ver as quebras
                   placeholder="Descreva seu produto. Use 'Enter' para pular linhas."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -221,7 +229,6 @@ export default function NewProductPage() {
                   />
                 </div>
                 
-                {/* PREVISÃO DO PREÇO PIX */}
                 <div className="flex flex-col justify-center p-4 bg-green-50 border border-green-200 rounded-xl">
                    <div className="flex items-center gap-2 text-green-700 font-bold text-xs mb-1 uppercase">
                      <Banknote size={16} /> Preço no PIX (-9%)
@@ -234,7 +241,6 @@ export default function NewProductPage() {
             </CardContent>
           </Card>
 
-          {/* MANTENDO IMAGENS E VARIAÇÕES COMO ESTAVA (PERFEITOS) */}
           <Card>
             <CardHeader><CardTitle>Imagens do Produto</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -275,7 +281,8 @@ export default function NewProductPage() {
               )}
               {variations.map((v) => (
                 <div key={v.tempId} className="p-4 border rounded-xl bg-slate-50/50 space-y-4 shadow-sm">
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {/* Grid responsivo: em mobile fica 2 colunas, em desktop 5. Evita "esmagar" o SKU */}
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-bold text-gray-500">Tamanho</Label>
                       <Input value={v.size} onChange={(e) => updateVariation(v.tempId, "size", e.target.value)} placeholder="P, M, G..." />
@@ -285,8 +292,13 @@ export default function NewProductPage() {
                       <Input value={v.color} onChange={(e) => updateVariation(v.tempId, "color", e.target.value)} placeholder="Azul..." />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-bold text-gray-500">SKU</Label>
-                      <Input value={v.sku} onChange={(e) => updateVariation(v.tempId, "sku", e.target.value)} placeholder="SKU-001" />
+                      <Label className="text-[10px] uppercase font-bold text-red-500">SKU / ID</Label>
+                      <Input 
+                        value={v.sku} 
+                        onChange={(e) => updateVariation(v.tempId, "sku", e.target.value)} 
+                        placeholder="ID-001" 
+                        className="bg-white"
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-bold text-gray-500">Estoque</Label>
@@ -314,6 +326,7 @@ export default function NewProductPage() {
           </Card>
         </div>
 
+        {/* COLUNA LATERAL DIREITA */}
         <div className="space-y-8">
           <Card className="border-2">
             <CardHeader><CardTitle className="text-lg">Categoria Principal</CardTitle></CardHeader>
