@@ -4,7 +4,9 @@ import { useState, useMemo } from "react"
 import Image from "next/image"
 import { AddToCartButton } from "@/app/_components/cart/add-to-cart-button"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronUp, Star } from "lucide-react"
+import { ChevronDown, ChevronUp, Star, Banknote } from "lucide-react"
+
+// ... (Mantenha seus Types Variation, Review, ProductImage, ProductClientProduct exatamente como estão)
 
 type Variation = {
   id: string
@@ -71,7 +73,9 @@ export default function ProductClient({
     v => (!selectedSize || v.size === selectedSize) && (!selectedColor || v.color === selectedColor)
   )
 
+  // CÁLCULO DE PREÇOS (Preço Base + Diferença de Variação)
   const finalPrice = product.price + (selectedVariation?.priceDiff ?? 0)
+  const pixPrice = finalPrice * 0.91 // 9% de desconto no PIX
 
   const productForCart = {
     id: product.id,
@@ -83,6 +87,7 @@ export default function ProductClient({
     color: selectedColor,
   }
 
+  // ... (Mantenha o componente ReviewForm exatamente como você criou)
   function ReviewForm({ productId }: { productId: string }) {
     const [name, setName] = useState("")
     const [rating, setRating] = useState(5)
@@ -131,17 +136,11 @@ export default function ProductClient({
     <div className="container mx-auto px-4 py-8 lg:py-12 space-y-12">
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
         
-        {/* GALERIA - FOCO EM IMAGEM INTEIRA */}
+        {/* GALERIA */}
         <div className="space-y-4">
           <div className="relative h-[400px] md:h-[520px] w-full overflow-hidden rounded-2xl border bg-white flex items-center justify-center">
             {mainImage ? (
-              <Image 
-                src={mainImage} 
-                alt={product.name} 
-                fill 
-                className="object-contain p-2 md:p-4" 
-                priority 
-              />
+              <Image src={mainImage} alt={product.name} fill className="object-contain p-2 md:p-4" priority />
             ) : (
               <div className="text-gray-400 font-medium">Sem imagem disponível</div>
             )}
@@ -166,24 +165,37 @@ export default function ProductClient({
 
         {/* INFO DO PRODUTO */}
         <div className="flex flex-col space-y-6">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight uppercase">{product.name}</h1>
-            <p className="text-3xl font-bold text-gray-900">R$ {finalPrice.toFixed(2)}</p>
+            
+            {/* BLOCO DE PREÇO COM DESCONTO PIX */}
+            <div className="bg-slate-50 border p-4 rounded-2xl">
+              <div className="flex items-center gap-2 text-green-600 font-bold text-sm mb-1 uppercase tracking-tighter">
+                <Banknote size={18} />
+                <span>Pagamento via PIX</span>
+              </div>
+              <p className="text-4xl font-black text-gray-900">R$ {pixPrice.toFixed(2)}</p>
+              <p className="text-sm text-gray-500 font-medium">
+                Ou <span className="font-bold">R$ {finalPrice.toFixed(2)}</span> no cartão sem juros
+              </p>
+            </div>
           </div>
 
           <AddToCartButton product={productForCart} />
 
-          {/* DESCRIÇÃO - SUPORTE A HTML DO ADMIN */}
+          {/* DESCRIÇÃO - CORRIGIDA PARA WHITESPACE (PARA NÃO PRECISAR DE HTML) */}
           {product.description && (
             <div className="border-t pt-6 space-y-3">
               <h2 className="text-sm font-black uppercase tracking-widest text-gray-500">Detalhes do Produto</h2>
               <div className="relative">
                 <div 
-                  className={`text-gray-700 text-base leading-relaxed overflow-hidden transition-all duration-500 ${
-                    !isDescriptionExpanded ? "max-h-[120px]" : "max-h-[5000px]"
+                  className={`text-gray-700 text-base leading-relaxed overflow-hidden transition-all duration-500 whitespace-pre-line ${
+                    !isDescriptionExpanded ? "max-h-[150px]" : "max-h-full"
                   }`}
-                  dangerouslySetInnerHTML={{ __html: product.description }}
-                />
+                  // Removido dangerouslySetInnerHTML para usar a quebra de linha natural do Admin
+                >
+                  {product.description}
+                </div>
                 
                 {product.description.length > 200 && (
                   <button 
@@ -201,7 +213,7 @@ export default function ProductClient({
             </div>
           )}
 
-          {/* DIMENSÕES */}
+          {/* DIMENSÕES E AVALIAÇÕES (Mantidos conforme seu código original) */}
           {(product.weight || product.height || product.width || product.length) && (
             <div className="p-4 border rounded-xl bg-gray-50 grid grid-cols-2 gap-4 text-xs">
               <div>
@@ -217,36 +229,33 @@ export default function ProductClient({
             </div>
           )}
 
-          {/* SEÇÃO DE AVALIAÇÕES - RESTAURADA */}
           <div className="border-t pt-8 space-y-6">
-             <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">O que os clientes dizem</h2>
-             
-             {product.reviews && product.reviews.length > 0 ? (
-               <div className="space-y-4">
-                 {product.reviews.map(r => (
-                   <div key={r.id} className="border rounded-xl p-4 bg-white shadow-sm">
-                     <div className="flex justify-between items-center mb-2">
-                       <p className="font-bold text-gray-900">{r.name}</p>
-                       <div className="flex text-yellow-500">
-                         {Array.from({ length: r.rating }).map((_, i) => (
-                           <Star key={i} size={14} className="fill-current" />
-                         ))}
-                       </div>
-                     </div>
-                     <p className="text-gray-600 text-sm italic">"{r.comment}"</p>
-                   </div>
-                 ))}
-               </div>
-             ) : (
-               <p className="text-gray-400 text-sm italic">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</p>
-             )}
-
-             <ReviewForm productId={product.id} />
+              <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">O que os clientes dizem</h2>
+              {product.reviews && product.reviews.length > 0 ? (
+                <div className="space-y-4">
+                  {product.reviews.map(r => (
+                    <div key={r.id} className="border rounded-xl p-4 bg-white shadow-sm">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="font-bold text-gray-900">{r.name}</p>
+                        <div className="flex text-yellow-500">
+                          {Array.from({ length: r.rating }).map((_, i) => (
+                            <Star key={i} size={14} className="fill-current" />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-gray-600 text-sm italic">"{r.comment}"</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 text-sm italic">Nenhuma avaliação ainda.</p>
+              )}
+              <ReviewForm productId={product.id} />
           </div>
         </div>
       </div>
 
-      {/* PRODUTOS RELACIONADOS */}
+      {/* PRODUTOS RELACIONADOS (Lógica do Pix aplicada aqui também) */}
       {relatedProducts.length > 0 && (
         <div className="pt-12 border-t">
           <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter">Produtos Relacionados</h2>
@@ -254,13 +263,17 @@ export default function ProductClient({
             {relatedProducts.map(p => {
               const img = p.images[0]
               const url = typeof img === "string" ? img : img?.url ?? ""
+              const relatedPix = p.price * 0.91 // Desconto Pix nos relacionados
               return (
                 <a href={`/produtos/${p.slug}`} key={p.id} className="group space-y-3 bg-white p-3 rounded-2xl border hover:shadow-md transition-shadow">
                   <div className="relative h-40 md:h-56 w-full overflow-hidden rounded-xl">
                     <Image src={url} alt={p.name} fill className="object-contain p-2 group-hover:scale-105 transition-transform" />
                   </div>
                   <h3 className="font-bold text-gray-800 text-sm truncate uppercase">{p.name}</h3>
-                  <p className="font-black text-gray-900">R$ {p.price.toFixed(2)}</p>
+                  <div className="space-y-0">
+                    <p className="font-black text-gray-900 leading-tight">R$ {relatedPix.toFixed(2)}</p>
+                    <p className="text-[10px] text-green-600 font-bold uppercase">No PIX (-9%)</p>
+                  </div>
                 </a>
               )
             })}

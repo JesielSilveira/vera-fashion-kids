@@ -10,8 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { X, Plus, Trash2 } from "lucide-react"
+import { X, Plus, Trash2, Banknote } from "lucide-react"
 
 type Category = {
   id: string
@@ -19,9 +18,8 @@ type Category = {
   active: boolean
 }
 
-// Interface estendida para incluir um ID temporário de controle no front-end
 type Variation = {
-  tempId: number // Vital para o React não bugar no delete
+  tempId: number 
   size: string
   color: string
   stock: number
@@ -37,7 +35,6 @@ export default function NewProductPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Estados do Produto
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [price, setPrice] = useState("")
@@ -46,15 +43,11 @@ export default function NewProductPage() {
   const [featured, setFeatured] = useState(false)
   const [bestSeller, setBestSeller] = useState(false)
 
-  // Estados de Relacionamento
   const [images, setImages] = useState<File[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryId, setCategoryId] = useState<string | null>(null)
-  
-  // Variações
   const [variations, setVariations] = useState<Variation[]>([])
 
-  // Carregar Categorias
   useEffect(() => {
     async function loadCategories() {
       try {
@@ -68,7 +61,6 @@ export default function NewProductPage() {
     loadCategories()
   }, [])
 
-  // Gerenciamento de Imagens
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.currentTarget.files
     if (!files) return
@@ -79,12 +71,11 @@ export default function NewProductPage() {
     setImages((prev) => prev.filter((_, i) => i !== index))
   }
 
-  // Gerenciamento de Variações (CORRIGIDO)
   function addVariation() {
     setVariations((prev) => [
       ...prev,
       { 
-        tempId: Date.now(), // ID único baseado no tempo
+        tempId: Date.now(),
         size: "", 
         color: "", 
         sku: "", 
@@ -108,7 +99,6 @@ export default function NewProductPage() {
     setVariations((prev) => prev.filter((v) => v.tempId !== tempId))
   }
 
-  // Submit Final
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (isSubmitting) return
@@ -126,7 +116,6 @@ export default function NewProductPage() {
     setIsSubmitting(true)
 
     try {
-      // 1. Upload Cloudinary
       const formData = new FormData()
       images.forEach((file) => formData.append("files", file))
 
@@ -138,7 +127,6 @@ export default function NewProductPage() {
       if (!uploadRes.ok) throw new Error("Erro no upload das imagens")
       const { urls } = await uploadRes.json()
 
-      // 2. Salvar no Banco
       const res = await fetch("/api/admin/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,32 +163,31 @@ export default function NewProductPage() {
     <form onSubmit={handleSubmit} className="space-y-8 max-w-6xl mx-auto pb-20 p-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Novo Produto</h1>
-          <p className="text-muted-foreground">Cadastre as informações e variações do item.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Novo Produto</h1>
+          <p className="text-muted-foreground italic">Configuração geral e preço com 9% OFF PIX automático.</p>
         </div>
         <div className="flex gap-3">
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} className="bg-black hover:bg-zinc-800">
             {isSubmitting ? "Salvando..." : "Salvar Produto"}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* COLUNA ESQUERDA: INFO E VARIAÇÕES */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* INFO BÁSICA */}
-          <Card>
-            <CardHeader><CardTitle>Geral</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          <Card className="border-2 shadow-sm">
+            <CardHeader><CardTitle className="text-lg">Informações Gerais</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
               <div className="grid gap-2">
-                <Label htmlFor="name">Nome do Produto</Label>
+                <Label htmlFor="name" className="font-bold">Nome do Produto</Label>
                 <Input
                   id="name"
                   placeholder="Ex: Camiseta de Algodão Premium"
+                  className="h-12"
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value)
@@ -208,37 +195,46 @@ export default function NewProductPage() {
                   }}
                 />
               </div>
+              
               <div className="grid gap-2">
-                <Label htmlFor="slug">Slug (URL amigável)</Label>
-                <Input
-                  id="slug"
-                  value={slug}
-                  onChange={(e) => setSlug(makeProductSlug(e.target.value))}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Descrição</Label>
+                <Label htmlFor="description" className="font-bold">Descrição (Respeita parágrafos)</Label>
                 <Textarea
                   id="description"
-                  rows={4}
+                  rows={8}
+                  className="min-h-[200px] leading-relaxed resize-y"
+                  placeholder="Descreva seu produto. Use 'Enter' para pular linhas."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
-              <div className="grid gap-2 w-full md:w-1/3">
-                <Label htmlFor="price">Preço Base (R$)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="price" className="font-bold">Preço Base (Cartão)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    className="h-12 text-lg font-semibold"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                </div>
+                
+                {/* PREVISÃO DO PREÇO PIX */}
+                <div className="flex flex-col justify-center p-4 bg-green-50 border border-green-200 rounded-xl">
+                   <div className="flex items-center gap-2 text-green-700 font-bold text-xs mb-1 uppercase">
+                     <Banknote size={16} /> Preço no PIX (-9%)
+                   </div>
+                   <p className="text-2xl font-black text-green-600">
+                     {price ? `R$ ${(Number(price) * 0.91).toFixed(2)}` : "R$ 0,00"}
+                   </p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* IMAGENS */}
+          {/* MANTENDO IMAGENS E VARIAÇÕES COMO ESTAVA (PERFEITOS) */}
           <Card>
             <CardHeader><CardTitle>Imagens do Produto</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -264,41 +260,40 @@ export default function NewProductPage() {
             </CardContent>
           </Card>
 
-          {/* VARIAÇÕES */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Variações e Estoque</CardTitle>
-              <Button type="button" size="sm" onClick={addVariation} className="gap-2">
+              <Button type="button" size="sm" onClick={addVariation} className="gap-2 bg-zinc-900">
                 <Plus size={16} /> Add Variação
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               {variations.length === 0 && (
-                <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground">
-                  Nenhuma variação adicionada. Use variações para cores e tamanhos.
+                <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground italic">
+                  Nenhuma variação (Cor/Tamanho) adicionada.
                 </div>
               )}
               {variations.map((v) => (
-                <div key={v.tempId} className="p-4 border rounded-xl bg-slate-50/50 space-y-4">
+                <div key={v.tempId} className="p-4 border rounded-xl bg-slate-50/50 space-y-4 shadow-sm">
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Tamanho</Label>
+                      <Label className="text-[10px] uppercase font-bold text-gray-500">Tamanho</Label>
                       <Input value={v.size} onChange={(e) => updateVariation(v.tempId, "size", e.target.value)} placeholder="P, M, G..." />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Cor</Label>
-                      <Input value={v.color} onChange={(e) => updateVariation(v.tempId, "color", e.target.value)} placeholder="Azul, Verde..." />
+                      <Label className="text-[10px] uppercase font-bold text-gray-500">Cor</Label>
+                      <Input value={v.color} onChange={(e) => updateVariation(v.tempId, "color", e.target.value)} placeholder="Azul..." />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">SKU</Label>
+                      <Label className="text-[10px] uppercase font-bold text-gray-500">SKU</Label>
                       <Input value={v.sku} onChange={(e) => updateVariation(v.tempId, "sku", e.target.value)} placeholder="SKU-001" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Estoque</Label>
+                      <Label className="text-[10px] uppercase font-bold text-gray-500">Estoque</Label>
                       <Input type="number" value={v.stock} onChange={(e) => updateVariation(v.tempId, "stock", Number(e.target.value))} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Dif. Preço</Label>
+                      <Label className="text-[10px] uppercase font-bold text-gray-500">Dif. Preço</Label>
                       <Input type="number" step="0.01" value={v.priceDiff} onChange={(e) => updateVariation(v.tempId, "priceDiff", Number(e.target.value))} />
                     </div>
                   </div>
@@ -308,9 +303,9 @@ export default function NewProductPage() {
                       variant="ghost" 
                       size="sm" 
                       onClick={() => removeVariation(v.tempId)} 
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 font-bold text-xs"
                     >
-                      <Trash2 size={16} className="mr-2" /> Remover
+                      <Trash2 size={14} className="mr-2" /> REMOVER VARIAÇÃO
                     </Button>
                   </div>
                 </div>
@@ -319,55 +314,51 @@ export default function NewProductPage() {
           </Card>
         </div>
 
-        {/* COLUNA DIREITA: CATEGORIA E FLAGS */}
         <div className="space-y-8">
-          
-          <Card>
-            <CardHeader><CardTitle>Categoria</CardTitle></CardHeader>
+          <Card className="border-2">
+            <CardHeader><CardTitle className="text-lg">Categoria Principal</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              {categories.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma categoria ativa encontrada.</p>}
               {categories.map((c) => (
-                <label key={c.id} className="flex items-center gap-3 p-2 border rounded-md hover:bg-slate-50 cursor-pointer transition">
+                <label key={c.id} className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${categoryId === c.id ? "bg-black text-white border-black" : "hover:bg-slate-50"}`}>
                   <input
                     type="radio"
                     name="category"
                     checked={categoryId === c.id}
                     onChange={() => setCategoryId(c.id)}
-                    className="w-4 h-4 accent-black"
+                    className="w-4 h-4 accent-white hidden"
                   />
-                  <span className="text-sm font-medium">{c.name}</span>
+                  <span className="text-sm font-bold uppercase tracking-tight">{c.name}</span>
                 </label>
               ))}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle>Status e Visibilidade</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
+          <Card className="border-2">
+            <CardHeader><CardTitle className="text-lg">Configurações de Exibição</CardTitle></CardHeader>
+            <CardContent className="space-y-6 font-medium">
               <div className="flex justify-between items-center">
                 <div className="space-y-0.5">
-                  <Label>Ativo</Label>
-                  <p className="text-xs text-muted-foreground">Disponível na loja</p>
+                  <Label>Produto Ativo</Label>
+                  <p className="text-[10px] text-muted-foreground uppercase">Exibir na loja</p>
                 </div>
                 <Switch checked={active} onCheckedChange={setActive} />
               </div>
               <div className="flex justify-between items-center">
                 <div className="space-y-0.5">
-                  <Label>Destaque</Label>
-                  <p className="text-xs text-muted-foreground">Página inicial</p>
+                  <Label>Destaque Home</Label>
+                  <p className="text-[10px] text-muted-foreground uppercase">Carrossel inicial</p>
                 </div>
                 <Switch checked={featured} onCheckedChange={setFeatured} />
               </div>
               <div className="flex justify-between items-center">
                 <div className="space-y-0.5">
                   <Label>Mais Vendido</Label>
-                  <p className="text-xs text-muted-foreground">Badge de popular</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Selo de popularidade</p>
                 </div>
                 <Switch checked={bestSeller} onCheckedChange={setBestSeller} />
               </div>
             </CardContent>
           </Card>
-
         </div>
       </div>
     </form>
