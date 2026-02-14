@@ -6,8 +6,7 @@ import { AddToCartButton } from "@/app/_components/cart/add-to-cart-button"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, Star, Banknote } from "lucide-react"
 
-// ... (Mantenha seus Types Variation, Review, ProductImage, ProductClientProduct exatamente como estão)
-
+// ... (Tipagens mantidas conforme seu original)
 type Variation = {
   id: string
   size?: string | null
@@ -73,7 +72,6 @@ export default function ProductClient({
     v => (!selectedSize || v.size === selectedSize) && (!selectedColor || v.color === selectedColor)
   )
 
-  // CÁLCULO DE PREÇOS (Preço Base + Diferença de Variação)
   const finalPrice = product.price + (selectedVariation?.priceDiff ?? 0)
   const pixPrice = finalPrice * 0.91 // 9% de desconto no PIX
 
@@ -87,7 +85,6 @@ export default function ProductClient({
     color: selectedColor,
   }
 
-  // ... (Mantenha o componente ReviewForm exatamente como você criou)
   function ReviewForm({ productId }: { productId: string }) {
     const [name, setName] = useState("")
     const [rating, setRating] = useState(5)
@@ -133,7 +130,7 @@ export default function ProductClient({
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 lg:py-12 space-y-12">
+    <div className="container mx-auto px-4 py-8 lg:py-12 space-y-12 overflow-x-hidden"> {/* Adicionado overflow-x-hidden para segurança */}
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
         
         {/* GALERIA */}
@@ -164,11 +161,13 @@ export default function ProductClient({
         </div>
 
         {/* INFO DO PRODUTO */}
-        <div className="flex flex-col space-y-6">
+        <div className="flex flex-col space-y-6 min-w-0"> {/* min-w-0 evita que flex items estorem o pai */}
           <div className="space-y-3">
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight uppercase">{product.name}</h1>
+            {/* Título com break-words para não empurrar o layout */}
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight uppercase break-words">
+              {product.name}
+            </h1>
             
-            {/* BLOCO DE PREÇO COM DESCONTO PIX */}
             <div className="bg-slate-50 border p-4 rounded-2xl">
               <div className="flex items-center gap-2 text-green-600 font-bold text-sm mb-1 uppercase tracking-tighter">
                 <Banknote size={18} />
@@ -176,23 +175,22 @@ export default function ProductClient({
               </div>
               <p className="text-4xl font-black text-gray-900">R$ {pixPrice.toFixed(2)}</p>
               <p className="text-sm text-gray-500 font-medium">
-                Ou <span className="font-bold">R$ {finalPrice.toFixed(2)}</span> no cartão sem juros
+                Ou <span className="font-bold">R$ {finalPrice.toFixed(2)}</span> no cartão
               </p>
             </div>
           </div>
 
           <AddToCartButton product={productForCart} />
 
-          {/* DESCRIÇÃO - CORRIGIDA PARA WHITESPACE (PARA NÃO PRECISAR DE HTML) */}
+          {/* DESCRIÇÃO - CORRIGIDA PARA QUEBRA DE LINHA E WRAP */}
           {product.description && (
             <div className="border-t pt-6 space-y-3">
               <h2 className="text-sm font-black uppercase tracking-widest text-gray-500">Detalhes do Produto</h2>
               <div className="relative">
                 <div 
-                  className={`text-gray-700 text-base leading-relaxed overflow-hidden transition-all duration-500 whitespace-pre-line ${
+                  className={`text-gray-700 text-base leading-relaxed overflow-hidden transition-all duration-500 whitespace-pre-wrap break-words ${
                     !isDescriptionExpanded ? "max-h-[150px]" : "max-h-full"
                   }`}
-                  // Removido dangerouslySetInnerHTML para usar a quebra de linha natural do Admin
                 >
                   {product.description}
                 </div>
@@ -213,7 +211,7 @@ export default function ProductClient({
             </div>
           )}
 
-          {/* DIMENSÕES E AVALIAÇÕES (Mantidos conforme seu código original) */}
+          {/* ... Restante das dimensões e avaliações mantidos ... */}
           {(product.weight || product.height || product.width || product.length) && (
             <div className="p-4 border rounded-xl bg-gray-50 grid grid-cols-2 gap-4 text-xs">
               <div>
@@ -243,7 +241,7 @@ export default function ProductClient({
                           ))}
                         </div>
                       </div>
-                      <p className="text-gray-600 text-sm italic">"{r.comment}"</p>
+                      <p className="text-gray-600 text-sm italic break-words">"{r.comment}"</p>
                     </div>
                   ))}
                 </div>
@@ -255,7 +253,7 @@ export default function ProductClient({
         </div>
       </div>
 
-      {/* PRODUTOS RELACIONADOS (Lógica do Pix aplicada aqui também) */}
+      {/* PRODUTOS RELACIONADOS */}
       {relatedProducts.length > 0 && (
         <div className="pt-12 border-t">
           <h2 className="text-2xl font-black mb-8 uppercase tracking-tighter">Produtos Relacionados</h2>
@@ -263,9 +261,9 @@ export default function ProductClient({
             {relatedProducts.map(p => {
               const img = p.images[0]
               const url = typeof img === "string" ? img : img?.url ?? ""
-              const relatedPix = p.price * 0.91 // Desconto Pix nos relacionados
+              const relatedPix = p.price * 0.91
               return (
-                <a href={`/produtos/${p.slug}`} key={p.id} className="group space-y-3 bg-white p-3 rounded-2xl border hover:shadow-md transition-shadow">
+                <a href={`/produtos/${p.slug}`} key={p.id} className="group space-y-3 bg-white p-3 rounded-2xl border hover:shadow-md transition-shadow min-w-0">
                   <div className="relative h-40 md:h-56 w-full overflow-hidden rounded-xl">
                     <Image src={url} alt={p.name} fill className="object-contain p-2 group-hover:scale-105 transition-transform" />
                   </div>
