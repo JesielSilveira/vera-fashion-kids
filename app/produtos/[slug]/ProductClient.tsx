@@ -4,9 +4,8 @@ import { useState, useMemo } from "react"
 import Image from "next/image"
 import { AddToCartButton } from "@/app/_components/cart/add-to-cart-button"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronUp, Star, Banknote } from "lucide-react"
+import { ChevronDown, ChevronUp, Star, Banknote, MessageCircle } from "lucide-react"
 
-// ... (Tipagens mantidas conforme seu original)
 type Variation = {
   id: string
   size?: string | null
@@ -64,8 +63,8 @@ export default function ProductClient({
   )
 
   const [mainImage, setMainImage] = useState<string>(images[0]?.url ?? "")
-  const [selectedSize, setSelectedSize] = useState<string | undefined>()
-  const [selectedColor, setSelectedColor] = useState<string | undefined>()
+  const [selectedSize, setSelectedSize] = useState<string | undefined>(sizes[0])
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(colors[0])
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
   const selectedVariation = product.variations.find(
@@ -73,7 +72,7 @@ export default function ProductClient({
   )
 
   const finalPrice = product.price + (selectedVariation?.priceDiff ?? 0)
-  const pixPrice = finalPrice * 0.91 // 9% de desconto no PIX
+  const pixPrice = finalPrice * 0.91
 
   const productForCart = {
     id: product.id,
@@ -84,6 +83,9 @@ export default function ProductClient({
     size: selectedSize,
     color: selectedColor,
   }
+
+  const whatsappNumber = "5554991844554" // 👈 COLOQUE SEU NÚMERO AQUI
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Olá! Gostaria de assistência sobre o produto: ${product.name} (Tamanho: ${selectedSize ?? 'Não selecionado'}, Cor: ${selectedColor ?? 'Não selecionada'})`
 
   function ReviewForm({ productId }: { productId: string }) {
     const [name, setName] = useState("")
@@ -130,7 +132,7 @@ export default function ProductClient({
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 lg:py-12 space-y-12 overflow-x-hidden"> {/* Adicionado overflow-x-hidden para segurança */}
+    <div className="container mx-auto px-4 py-8 lg:py-12 space-y-12 overflow-x-hidden">
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
         
         {/* GALERIA */}
@@ -161,9 +163,8 @@ export default function ProductClient({
         </div>
 
         {/* INFO DO PRODUTO */}
-        <div className="flex flex-col space-y-6 min-w-0"> {/* min-w-0 evita que flex items estorem o pai */}
+        <div className="flex flex-col space-y-6 min-w-0">
           <div className="space-y-3">
-            {/* Título com break-words para não empurrar o layout */}
             <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight uppercase break-words">
               {product.name}
             </h1>
@@ -171,7 +172,7 @@ export default function ProductClient({
             <div className="bg-slate-50 border p-4 rounded-2xl">
               <div className="flex items-center gap-2 text-green-600 font-bold text-sm mb-1 uppercase tracking-tighter">
                 <Banknote size={18} />
-                <span>Pagamento via PIX</span>
+                <span>Pagamento via PIX (-9%)</span>
               </div>
               <p className="text-4xl font-black text-gray-900">R$ {pixPrice.toFixed(2)}</p>
               <p className="text-sm text-gray-500 font-medium">
@@ -180,9 +181,75 @@ export default function ProductClient({
             </div>
           </div>
 
-          <AddToCartButton product={productForCart} />
+          {/* SELEÇÃO DE VARIANTES */}
+          <div className="space-y-6">
+            {sizes.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs font-black uppercase text-gray-400 tracking-widest">Tamanho</span>
+                <div className="flex flex-wrap gap-2">
+                  {sizes.map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`px-4 py-2 rounded-lg border text-sm font-bold transition-all ${
+                        selectedSize === size ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          {/* DESCRIÇÃO - CORRIGIDA PARA QUEBRA DE LINHA E WRAP */}
+            {colors.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs font-black uppercase text-gray-400 tracking-widest">Cor</span>
+                <div className="flex flex-wrap gap-2">
+                  {colors.map(color => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={`px-4 py-2 rounded-lg border text-sm font-bold transition-all ${
+                        selectedColor === color ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* BOTÕES DE AÇÃO - CORRIGIDO SEM 'DISABLED' */}
+          <div className="space-y-3 pt-4">
+            {selectedVariation && selectedVariation.stock > 0 ? (
+              <AddToCartButton product={productForCart} />
+            ) : (
+              <div className="w-full py-4 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase text-center text-xs border border-gray-200">
+                Variação sem estoque
+              </div>
+            )}
+            
+            <a 
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-4 border-2 border-green-500 text-green-600 rounded-2xl font-black uppercase text-xs hover:bg-green-50 transition-all"
+            >
+              <MessageCircle size={18} />
+              Assistência por WhatsApp
+            </a>
+
+            {selectedVariation && selectedVariation.stock <= 3 && selectedVariation.stock > 0 && (
+              <p className="text-center text-orange-600 text-[10px] font-bold uppercase animate-pulse">
+                Apenas {selectedVariation.stock} unidades disponíveis!
+              </p>
+            )}
+          </div>
+
+          {/* DESCRIÇÃO */}
           {product.description && (
             <div className="border-t pt-6 space-y-3">
               <h2 className="text-sm font-black uppercase tracking-widest text-gray-500">Detalhes do Produto</h2>
@@ -211,7 +278,7 @@ export default function ProductClient({
             </div>
           )}
 
-          {/* ... Restante das dimensões e avaliações mantidos ... */}
+          {/* MEDIDAS E AVALIAÇÕES */}
           {(product.weight || product.height || product.width || product.length) && (
             <div className="p-4 border rounded-xl bg-gray-50 grid grid-cols-2 gap-4 text-xs">
               <div>

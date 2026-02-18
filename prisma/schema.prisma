@@ -28,7 +28,7 @@ model Product {
   name        String
   slug        String   @unique
   price       Float
-  description String
+  description String @db.Text
 
   images      Json
   sizes       Json
