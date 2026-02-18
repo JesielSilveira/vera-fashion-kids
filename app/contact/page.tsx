@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner" // Ou use um alert simples se não tiver sonner
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(false)
@@ -21,15 +20,22 @@ export default function ContactPage() {
     }
 
     try {
-      // Aqui você pode criar uma rota API ou usar um serviço como Formspree
-      // Por enquanto, vamos simular o envio para você testar o visual funcional
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // 🚀 Chamada real para a sua rota API
+      const response = await fetch("/api/suporte", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) throw new Error("Erro ao salvar")
       
-      console.log("Mensagem enviada:", data)
-      alert("Mensagem enviada com sucesso! Entraremos em contato em breve.")
+      alert("Mensagem enviada com sucesso! Logo entraremos em contato.")
       event.currentTarget.reset()
     } catch (error) {
-      alert("Erro ao enviar mensagem. Tente o WhatsApp!")
+      console.error(error)
+      alert("Erro ao enviar mensagem. Se for urgente, nos chame no WhatsApp!")
     } finally {
       setLoading(false)
     }
@@ -83,7 +89,7 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* FORMULÁRIO REAL */}
+        {/* FORMULÁRIO COM LÓGICA DE SALVAMENTO NO BANCO */}
         <form onSubmit={handleSubmit} className="border-2 border-black rounded-3xl p-8 space-y-5 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
           <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Envie uma mensagem</h2>
 
