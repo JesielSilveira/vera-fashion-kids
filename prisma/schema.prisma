@@ -160,3 +160,11 @@ model PasswordReset {
   createdAt DateTime @default(now())
 }
 
+model Support {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+}
+

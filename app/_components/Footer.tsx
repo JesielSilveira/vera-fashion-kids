@@ -42,8 +42,8 @@ export function Footer() {
 
             {/* Redes sociais */}
             <div className="mt-4 flex gap-3">
-              <Link href="https://www.facebook.com/profile.php?id=61575266533670&rdid=b7sQb41QiMt7V8C4&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1F83gM9aoz%2F"><Facebook className="h-5 w-5" /></Link>
-              <Link href="https://www.instagram.com/verafashionkids_espumoso?utm_source=qr&igsh=MTBjb3prank4ZjZvaw=="><Instagram className="h-5 w-5" /></Link>
+              <Link href="https://www.facebook.com/profile.php?id=61575266533670&rdid=b7sQb41QiMt7V8C4&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1F83gM9aoz%2F" target="_blank"><Facebook className="h-5 w-5" /></Link>
+              <Link href="https://www.instagram.com/verafashionkids_espumoso?utm_source=qr&igsh=MTBjb3prank4ZjZvaw==" target="_blank"><Instagram className="h-5 w-5" /></Link>
             </div>
           </div>
 

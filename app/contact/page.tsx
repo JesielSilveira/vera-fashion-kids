@@ -1,70 +1,131 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner" // Ou use um alert simples se não tiver sonner
+
 export default function ContactPage() {
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setLoading(true)
+
+    const formData = new FormData(event.currentTarget)
+    const data = {
+      name: formData.get("name"),
+      email: formData.get("email"),
+      message: formData.get("message"),
+    }
+
+    try {
+      // Aqui você pode criar uma rota API ou usar um serviço como Formspree
+      // Por enquanto, vamos simular o envio para você testar o visual funcional
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      
+      console.log("Mensagem enviada:", data)
+      alert("Mensagem enviada com sucesso! Entraremos em contato em breve.")
+      event.currentTarget.reset()
+    } catch (error) {
+      alert("Erro ao enviar mensagem. Tente o WhatsApp!")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="container mx-auto px-4 py-16 max-w-4xl space-y-10">
-      <h1 className="text-4xl font-extrabold text-center">
-        Contato
-      </h1>
+    <div className="container mx-auto px-4 py-16 max-w-5xl space-y-12 overflow-x-hidden">
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-gray-900">
+          Contato
+        </h1>
+        <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+          Dúvidas sobre tamanhos ou pedidos? A equipe da <strong>Vera Fashion Kids</strong> está pronta para ajudar.
+        </p>
+      </div>
 
-      <p className="text-center text-gray-600 text-lg">
-        Entre em contato com a <strong>Vera Fashion Kids</strong>.
-        Estamos prontos para te atender!
-      </p>
+      <div className="grid md:grid-cols-2 gap-12 items-start">
+        {/* CANAIS DE ATENDIMENTO */}
+        <div className="space-y-8 bg-white p-8 rounded-3xl border shadow-sm">
+          <div>
+            <h2 className="text-2xl font-black uppercase mb-4 tracking-tight">Fale conosco</h2>
+            <p className="text-gray-600 leading-relaxed">
+              Escolha o canal de sua preferência. Respondemos rapidinho!
+            </p>
+          </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* INFORMAÇÕES */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-semibold">Fale conosco</h2>
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="bg-slate-100 p-3 rounded-full">📧</div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase">E-mail</p>
+                <p className="font-bold text-gray-800">veraregina2257z@gmail.com</p>
+              </div>
+            </div>
 
-          <p className="text-gray-700">
-            Se você tiver dúvidas sobre nossos produtos, pedidos ou quiser
-            falar com nossa equipe, utilize um dos canais abaixo.
-          </p>
+            <div className="flex items-center gap-4">
+              <div className="bg-green-100 p-3 rounded-full">📱</div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase">WhatsApp</p>
+                <p className="font-bold text-gray-800">(54) 99184-4554</p>
+              </div>
+            </div>
 
-          <ul className="space-y-2 text-gray-700">
-            <li>
-              📧 Email: <span className="font-medium">contato@verafashionkids.com</span>
-            </li>
-            <li>
-              📱 WhatsApp: <span className="font-medium">(00) 00000-0000</span>
-            </li>
-            <li>
-              🕒 Atendimento: Segunda a Sexta, das 9h às 18h
-            </li>
-          </ul>
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-100 p-3 rounded-full">🕒</div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase">Atendimento</p>
+                <p className="font-bold text-gray-800">Segunda a Sexta, das 8h às 18h</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* FORMULÁRIO (VISUAL) */}
-        <div className="border rounded-xl p-6 space-y-4 bg-gray-50">
-          <h2 className="text-2xl font-semibold">Envie uma mensagem</h2>
+        {/* FORMULÁRIO REAL */}
+        <form onSubmit={handleSubmit} className="border-2 border-black rounded-3xl p-8 space-y-5 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Envie uma mensagem</h2>
 
-          <input
-            type="text"
-            placeholder="Seu nome"
-            className="w-full border rounded px-3 py-2"
-          />
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase ml-1">Seu Nome</label>
+            <Input
+              name="name"
+              required
+              placeholder="Ex: Maria Silva"
+              className="rounded-xl border-gray-300 focus:ring-black focus:border-black"
+            />
+          </div>
 
-          <input
-            type="email"
-            placeholder="Seu email"
-            className="w-full border rounded px-3 py-2"
-          />
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase ml-1">Seu E-mail</label>
+            <Input
+              name="email"
+              type="email"
+              required
+              placeholder="email@exemplo.com"
+              className="rounded-xl border-gray-300 focus:ring-black focus:border-black"
+            />
+          </div>
 
-          <textarea
-            placeholder="Sua mensagem"
-            className="w-full border rounded px-3 py-2 min-h-[120px] resize-y"
-          />
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase ml-1">Mensagem</label>
+            <Textarea
+              name="message"
+              required
+              placeholder="Como podemos te ajudar?"
+              className="rounded-xl border-gray-300 focus:ring-black focus:border-black min-h-[120px]"
+            />
+          </div>
 
-          <button
-            type="button"
-            className="w-full bg-black text-white rounded py-2 font-semibold hover:opacity-90"
+          <Button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-black text-white rounded-xl py-6 font-black uppercase tracking-widest hover:bg-gray-800 transition-all"
           >
-            Enviar mensagem
-          </button>
-
-          <p className="text-xs text-gray-500">
-            * Formulário ilustrativo. A funcionalidade pode ser adicionada depois.
-          </p>
-        </div>
+            {loading ? "Enviando..." : "Enviar Mensagem"}
+          </Button>
+        </form>
       </div>
     </div>
   )

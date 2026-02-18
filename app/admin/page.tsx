@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 
 export default async function AdminPage() {
   /* ======================
-     MÉTRICAS
+      MÉTRICAS
   ====================== */
 
   const [
@@ -45,17 +45,7 @@ export default async function AdminPage() {
           </p>
         </div>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Visão geral do painel administrativo
-          </p>
-        </div>
-
         <RefreshButton />
-      </div>
-
       </div>
 
       {/* MÉTRICAS */}
@@ -76,6 +66,7 @@ export default async function AdminPage() {
             </p>
           </CardContent>
         </Card>
+        
         <Link href="/admin/pedidos">
           <Card className="cursor-pointer transition hover:border-primary hover:shadow-md">
             <CardHeader className="pb-2">
@@ -94,7 +85,6 @@ export default async function AdminPage() {
           </Card>
         </Link>
 
-        
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
@@ -111,7 +101,6 @@ export default async function AdminPage() {
             </p>
           </CardContent>
         </Card>
-
 
         <Card>
           <CardHeader className="pb-2">
@@ -174,16 +163,29 @@ export default async function AdminPage() {
               </CardContent>
             </Card>
           </Link>
-            <Link href="/admin/newsletter">
-          <Card className="cursor-pointer transition hover:border-primary hover:shadow-md">
-            <CardHeader>
-              <CardTitle>Newsletter</CardTitle>
-            </CardHeader>
-            <CardContent className="text-muted-foreground">
-              Emails cadastrados para campanhas
-            </CardContent>
-          </Card>
-        </Link>
+
+          <Link href="/admin/newsletter">
+            <Card className="cursor-pointer transition hover:border-primary hover:shadow-md">
+              <CardHeader>
+                <CardTitle>Newsletter</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground">
+                Emails cadastrados para campanhas
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* SUPORTE AO CLIENTE ADICIONADO AQUI */}
+          <Link href="/admin/suporte">
+            <Card className="cursor-pointer transition hover:border-primary hover:shadow-md">
+              <CardHeader>
+                <CardTitle>Suporte</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground">
+                Mensagens enviadas pelo contato
+              </CardContent>
+            </Card>
+          </Link>
 
         </div>
       </div>
