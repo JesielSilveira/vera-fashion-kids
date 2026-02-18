@@ -21,7 +21,7 @@ export default function ContactPage() {
 
     try {
       // 🚀 Chamada real para a sua rota API
-      const response = await fetch("/api/suporte", {
+      const response = await fetch("/api/admin/suporte", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
