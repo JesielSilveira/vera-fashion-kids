@@ -8,39 +8,43 @@ import { Textarea } from "@/components/ui/textarea"
 export default function ContactPage() {
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setLoading(true)
+async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
 
-    const formData = new FormData(event.currentTarget)
+    const formData = new FormData(event.currentTarget);
     const data = {
       name: formData.get("name"),
       email: formData.get("email"),
       message: formData.get("message"),
-    }
+    };
 
     try {
-      // 🚀 Chamada real para a sua rota API
       const response = await fetch("/api/admin/suporte", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      })
+      });
 
-      if (!response.ok) throw new Error("Erro ao salvar")
+      // Se o status não for 200-299, ele pula direto para o CATCH
+      if (!response.ok) {
+        throw new Error("Falha no servidor");
+      }
       
-      alert("Mensagem enviada com sucesso! Logo entraremos em contato.")
-      event.currentTarget.reset()
-    } catch (error) {
-      console.error(error)
-      alert("Erro ao enviar mensagem. Se for urgente, nos chame no WhatsApp!")
-    } finally {
-      setLoading(false)
-    }
-  }
+      // SÓ EXECUTA ISSO SE O IF ACIMA FOR FALSO (OU SEJA, SE DEU CERTO)
+      alert("Mensagem enviada com sucesso!");
+      (event.target as HTMLFormElement).reset();
 
+    } catch (error) {
+      // SÓ EXECUTA ISSO SE O FETCH FALHAR OU O THROW FOR DISPARADO
+      console.error(error);
+      alert("Erro ao enviar mensagem. Tente o WhatsApp!");
+    } finally {
+      // EXECUTA SEMPRE PARA LIBERAR O BOTÃO
+      setLoading(false);
+    }
+    
+  }
   return (
     <div className="container mx-auto px-4 py-16 max-w-5xl space-y-12 overflow-x-hidden">
       <div className="text-center space-y-4">
