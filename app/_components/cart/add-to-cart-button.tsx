@@ -103,7 +103,7 @@ export function AddToCartButton({
       <Button
         onClick={handleAdd}
         disabled={disabled}
-        className="w-full h-12 text-base font-semibold rounded-xl"
+        className="w-full h-12 text-base font-semibold rounded-xl bg-[#2fc3c6]"
       >
         {disabled ? "Selecione as opções" : "Adicionar ao carrinho"}
       </Button>
