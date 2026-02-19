@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useCartStore } from "@/store/cart-store"
 
@@ -9,104 +8,44 @@ type ProductButton = {
   slug: string
   name: string
   price: number
-  images?: { url: string }[]
-  sizes?: string[]
-  colors?: string[]
+  image?: string | null // Ajustado para bater com o CartProduct do store
 }
 
 export function AddToCartButton({
   product,
+  selectedSize,  // 👈 Agora recebe da página
+  selectedColor, // 👈 Agora recebe da página
+  disabled,      // 👈 A lógica de "está selecionado" vem de fora
 }: {
   product: ProductButton
+  selectedSize?: string
+  selectedColor?: string
+  disabled?: boolean
 }) {
   const addItem = useCartStore((s) => s.addItem)
 
-  const [size, setSize] = useState<string | undefined>()
-  const [color, setColor] = useState<string | undefined>()
-
-  const firstImage =
-    Array.isArray(product.images) && product.images.length > 0
-      ? product.images[0].url
-      : ""
-
   function handleAdd() {
+    // Agora ele envia exatamente o que foi selecionado na ProductClient
     addItem(
       {
         id: product.id,
         slug: product.slug,
         name: product.name,
         price: product.price,
-        image: firstImage,
+        image: product.image,
       },
-      size,
-      color
+      selectedSize,
+      selectedColor
     )
   }
 
-  const requiresSize = Array.isArray(product.sizes) && product.sizes.length > 0
-  const requiresColor = Array.isArray(product.colors) && product.colors.length > 0
-
-  const disabled =
-    (requiresSize && !size) ||
-    (requiresColor && !color)
-
   return (
-    <div className="space-y-4">
-      {/* TAMANHOS */}
-      {requiresSize && (
-        <div>
-          <p className="font-medium mb-2">Tamanho</p>
-          <div className="flex gap-2 flex-wrap">
-            {product.sizes!.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSize(s)}
-                className={`px-4 py-2 rounded-lg border text-sm transition
-                  ${
-                    size === s
-                      ? "border-black bg-black text-white"
-                      : "hover:bg-muted"
-                  }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* CORES */}
-      {requiresColor && (
-        <div>
-          <p className="font-medium mb-2">Cor</p>
-          <div className="flex gap-2 flex-wrap">
-            {product.colors!.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                className={`px-4 py-2 rounded-lg border text-sm transition
-                  ${
-                    color === c
-                      ? "border-black bg-black text-white"
-                      : "hover:bg-muted"
-                  }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <Button
-        onClick={handleAdd}
-        disabled={disabled}
-        className="w-full h-12 text-base font-semibold rounded-xl bg-[#2fc3c6]"
-      >
-        {disabled ? "Selecione as opções" : "Adicionar ao carrinho"}
-      </Button>
-    </div>
+    <Button
+      onClick={handleAdd}
+      disabled={disabled}
+      className="w-full h-14 text-base font-black uppercase rounded-2xl bg-[#2fc3c6] hover:bg-[#28adaf] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+    >
+      {disabled ? "Selecione as opções" : "Adicionar ao carrinho"}
+    </Button>
   )
 }
