@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const preference = new Preference(client);
     
     // URL do seu site com o caminho do webhook
-    const notificationUrl = "https://www.verafashionkidsespumoso.com.br/api/webhooks/mercadopago";
+    const notificationUrl = "https://www.verafashionkidsespumoso.com.br/api/webhook/mercadopago";
 
     const response = await preference.create({
       body: {
