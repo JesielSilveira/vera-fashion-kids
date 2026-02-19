@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 
-// Configuração com o Token que você pegou no painel
 const client = new MercadoPagoConfig({ 
   accessToken: process.env.MP_ACCESS_TOKEN! 
 });
@@ -13,35 +12,42 @@ export async function POST(req: Request) {
     const id = searchParams.get("data.id") || searchParams.get("id");
     const type = searchParams.get("type");
 
-    // O Mercado Pago envia notificações de vários tipos, queremos apenas 'payment'
+    // Mercado Pago avisa sobre várias coisas, queremos apenas o pagamento
     if (type !== "payment" || !id) {
       return NextResponse.json({ received: true });
     }
 
-    // 1. Consultar os detalhes do pagamento no Mercado Pago
+    // 1. Consultar os detalhes reais do pagamento para evitar fraudes
     const payment = await new Payment(client).get({ id });
 
     // 2. Verificar se o status é aprovado
     if (payment.status === "approved") {
       const metadata = payment.metadata;
-      const productData = metadata?.product_details || [];
-      const userId = metadata?.user_id;
+      
+      // 🚀 SINCRONIA: Usando os mesmos nomes que enviamos no Checkout
+      const productItems = metadata?.product_items || []; 
+      const userId = metadata?.user_id || metadata?.userId; 
 
-      // 3. Criar o pedido no Prisma (mantendo sua estrutura)
+      // 3. Criar o pedido no Prisma
       await prisma.order.create({
         data: {
+          // Relaciona ao usuário se logado, senão null
           userId: userId && userId !== "guest" ? userId : null,
-          // Trocamos stripeSessionId por mpPaymentId ou equivalente no seu schema
-          stripeSessionId: String(payment.id), 
+          
+          // Importante: Salvamos o ID do MP no campo que o seu banco já tem
+          mercadopagoId: String(payment.id), 
+          
           total: Number(payment.transaction_amount),
           status: "PAID",
           shippingAddress: `${metadata?.address} | Tel: ${metadata?.phone}`,
+          
           items: {
-            create: productData.map((item: any) => ({
+            create: productItems.map((item: any) => ({
+              // Se for frete, não tem ID de produto físico
               productId: item.f ? null : item.id,
-              name: item.n || "Produto",
               quantity: Number(item.q),
-              price: Number(item.p),
+              // Buscamos o preço original ou o enviado no metadata
+              price: Number(item.p || 0), 
               size: item.s || null,
               color: item.c || null,
               isFrete: item.f || false,
@@ -50,13 +56,15 @@ export async function POST(req: Request) {
         }
       });
 
-      console.log(`✅ Pedido ${payment.id} aprovado e salvo no banco!`);
+      console.log(`✅ Webhook: Pedido MP_${payment.id} processado com sucesso!`);
       return NextResponse.json({ updated: true });
     }
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error("ERRO WEBHOOK MERCADO PAGO:", error.message);
-    return new NextResponse(`Webhook Error: ${error.message}`, { status: 500 });
+    console.error("❌ ERRO WEBHOOK MERCADO PAGO:", error.message);
+    // Respondemos 200 para o MP parar de tentar enviar o mesmo erro, 
+    // mas logamos o erro para você consertar.
+    return NextResponse.json({ error: error.message }, { status: 200 });
   }
 }
