@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 
-// Configuração do Mercado Pago com o seu Access Token do .env
 const client = new MercadoPagoConfig({ 
   accessToken: process.env.MP_ACCESS_TOKEN!,
   options: { timeout: 5000 } 
@@ -14,7 +13,7 @@ export async function POST(req: Request) {
 
     console.log("DEBUG CHECKOUT MERCADO PAGO:", JSON.stringify(items));
 
-    // 1. Mapear itens e aplicar metadados de variação
+    // 1. Mapear itens
     const mpItems = items.map((item: any) => {
       const variantInfo = [item.size, item.color].filter(Boolean).join(" - ");
       const productName = variantInfo ? `${item.name} (${variantInfo})` : item.name;
@@ -22,7 +21,7 @@ export async function POST(req: Request) {
       return {
         id: item.id,
         title: productName,
-        unit_price: Number(item.price),
+        unit_price: Number(item.price), // Enviamos o preço cheio; o desconto é aplicado via regra ou metadata
         quantity: Number(item.quantity),
         currency_id: "BRL",
       };
@@ -35,25 +34,22 @@ export async function POST(req: Request) {
       body: {
         items: mpItems,
         payer: {
-          email: userEmail || "test_user_123@testuser.com", // Email do comprador
+          email: userEmail || "test_user_123@testuser.com",
         },
-        // 🚀 LÓGICA DE DESCONTO E MÉTODOS
         payment_methods: {
-          excluded_payment_types: [
-            { id: "ticket" } // Exclui boleto para focar em Pix e Cartão
-          ],
+          excluded_payment_types: [{ id: "ticket" }],
           installments: 12,
         },
-        // Configuramos o desconto de 9% para o meio de pagamento Pix
-        // Nota: No Checkout Pro, o MP pode mostrar o desconto direto se configurado no painel,
-        // mas via API garantimos passando no metadata para o seu sistema de Orders.
+        // 🚀 INTEGRAÇÃO WEBHOOK E DESCONTO
         metadata: {
           userId: userId || "guest",
-          address: JSON.stringify(address),
+          address: typeof address === 'string' ? address : JSON.stringify(address),
           phone: phone || "",
-          pix_discount_percent: 9, // Referência para o seu webhook/admin
-          product_details: items.map((i: any) => ({
+          pix_discount_percent: 9,
+          // Guardamos os itens aqui para o Webhook recuperar e dar baixa no estoque
+          product_items: items.map((i: any) => ({
             id: i.id,
+            q: i.quantity,
             s: i.size || "",
             c: i.color || ""
           }))
@@ -64,10 +60,10 @@ export async function POST(req: Request) {
           pending: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
         },
         auto_return: "approved",
+        notification_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/mercadopago`, // 👈 Essencial para o Webhook funcionar
       },
     });
 
-    // O Mercado Pago retorna 'init_point' que é a URL do checkout
     return NextResponse.json({ url: response.init_point });
 
   } catch (err: any) {

@@ -76,6 +76,7 @@ model Order {
   status    String   @default("pending")
   tracking  String?
   items     OrderItem[]
+  mercadopagoId  String?     @unique
 
   createdAt DateTime @default(now())
   shippingAddress String?
