@@ -28,20 +28,21 @@ export async function POST(req: Request) {
     // 2. Criar a Preferência
     const preference = new Preference(client);
     
+    // 🚀 AQUI ESTÁ O AJUSTE: Forçando a URL correta da Vercel para o Webhook
+    const notificationUrl = "https://www.verafashionkidsespumoso/api/webhook/mercadopago";
+    console.log("Gerando checkout com notification_url:", notificationUrl);
+
     const response = await preference.create({
       body: {
         items: mpItems,
         payer: {
           email: userEmail || "cliente@exemplo.com",
-          // Opcional: adicionar phone aqui ajuda a liberar o checkout transparente
         },
         payment_methods: {
-          // Mantendo vazio para aceitar CARTÃO, PIX e BOLETO
           excluded_payment_methods: [],
           excluded_payment_types: [], 
           installments: 12,
         },
-        // Metadata para seu Webhook e Admin
         metadata: {
           userId: userId || "guest",
           address: typeof address === 'string' ? address : JSON.stringify(address),
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
           product_items: items.map((i: any) => ({
             id: i.id,
             q: i.quantity,
+            p: i.price, // Adicionado 'p' para garantir que o preço chegue no webhook
             s: i.size || "",
             c: i.color || ""
           }))
@@ -60,11 +62,10 @@ export async function POST(req: Request) {
           pending: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
         },
         auto_return: "approved",
-        notification_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/mercadopago`,
+        notification_url: notificationUrl, // URL FIXA PARA TESTE
       },
     });
 
-    // Retornamos o init_point (Checkout Pro)
     return NextResponse.json({ url: response.init_point });
 
   } catch (err: any) {
