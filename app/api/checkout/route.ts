@@ -11,8 +11,6 @@ export async function POST(req: Request) {
   try {
     const { items, userId, address, phone, userEmail } = await req.json();
 
-    console.log("DEBUG CHECKOUT MERCADO PAGO:", JSON.stringify(items));
-
     // 1. Mapear itens
     const mpItems = items.map((item: any) => {
       const variantInfo = [item.size, item.color].filter(Boolean).join(" - ");
@@ -21,7 +19,7 @@ export async function POST(req: Request) {
       return {
         id: item.id,
         title: productName,
-        unit_price: Number(item.price), // Enviamos o preço cheio; o desconto é aplicado via regra ou metadata
+        unit_price: Number(item.price), 
         quantity: Number(item.quantity),
         currency_id: "BRL",
       };
@@ -34,19 +32,21 @@ export async function POST(req: Request) {
       body: {
         items: mpItems,
         payer: {
-          email: userEmail || "test_user_123@testuser.com",
+          email: userEmail || "cliente@exemplo.com",
+          // Opcional: adicionar phone aqui ajuda a liberar o checkout transparente
         },
         payment_methods: {
-          excluded_payment_types: [{ id: "ticket" }],
+          // Mantendo vazio para aceitar CARTÃO, PIX e BOLETO
+          excluded_payment_methods: [],
+          excluded_payment_types: [], 
           installments: 12,
         },
-        // 🚀 INTEGRAÇÃO WEBHOOK E DESCONTO
+        // Metadata para seu Webhook e Admin
         metadata: {
           userId: userId || "guest",
           address: typeof address === 'string' ? address : JSON.stringify(address),
           phone: phone || "",
           pix_discount_percent: 9,
-          // Guardamos os itens aqui para o Webhook recuperar e dar baixa no estoque
           product_items: items.map((i: any) => ({
             id: i.id,
             q: i.quantity,
@@ -60,10 +60,11 @@ export async function POST(req: Request) {
           pending: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
         },
         auto_return: "approved",
-        notification_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/mercadopago`, // 👈 Essencial para o Webhook funcionar
+        notification_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/mercadopago`,
       },
     });
 
+    // Retornamos o init_point (Checkout Pro)
     return NextResponse.json({ url: response.init_point });
 
   } catch (err: any) {
