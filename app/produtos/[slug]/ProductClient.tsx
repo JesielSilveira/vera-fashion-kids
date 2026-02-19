@@ -192,7 +192,7 @@ export default function ProductClient({
                       key={size}
                       onClick={() => setSelectedSize(size)}
                       className={`px-4 py-2 rounded-lg border text-sm font-bold transition-all ${
-                        selectedSize === size ? "bg-[#f0eeea] text-white border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                        selectedSize === size ? "bg-[#f0eeea] text-black border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
                       }`}
                     >
                       {size}
@@ -211,7 +211,7 @@ export default function ProductClient({
                       key={color}
                       onClick={() => setSelectedColor(color)}
                       className={`px-4 py-2 rounded-lg border text-sm font-bold transition-all ${
-                        selectedColor === color ? "bg-[#f0eeea] text-white border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                        selectedColor === color ? "bg-[#f0eeea] text-black border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
                       }`}
                     >
                       {color}
