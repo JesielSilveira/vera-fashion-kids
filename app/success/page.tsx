@@ -7,23 +7,30 @@ import Link from "next/link"
 function SuccessContent() {
   const searchParams = useSearchParams()
   
-  // ✅ CORREÇÃO: Pegando o nome exato que vem na URL (sessionId)
-  const sessionId = searchParams.get("sessionId") 
+  // ✅ CORREÇÃO MULTI-ID: O Mercado Pago envia como collection_id ou payment_id
+  // Se for um teste manual seu, ele ainda aceita sessionId
+  const sessionId = 
+    searchParams.get("collection_id") || 
+    searchParams.get("payment_id") || 
+    searchParams.get("sessionId");
   
   const [status, setStatus] = useState("confirmando")
   const [order, setOrder] = useState<any>(null)
 
   useEffect(() => {
-    // Se não tiver o ID na URL, para aqui.
+    // Se não tiver nenhum ID na URL após tentar todos os nomes, aí sim dá erro
     if (!sessionId) {
-      console.error("Session ID não encontrado na URL")
-      setStatus("erro")
+      // Só logamos erro se realmente não houver nenhum parâmetro de ID
+      if (searchParams.toString().length > 0) {
+         console.error("ID de pagamento não encontrado nos parâmetros da URL")
+         setStatus("erro")
+      }
       return
     }
 
     const checkOrder = async () => {
       try {
-        // ✅ CORREÇÃO: Enviando para a rota pública que criamos
+        // ✅ Enviando o ID capturado para a sua rota de check
         const res = await fetch(`/api/orders/check?sessionId=${sessionId}`)
         
         if (res.ok) {
@@ -43,7 +50,7 @@ function SuccessContent() {
       attempts++
       const isDone = await checkOrder()
       
-      // Tenta por 30 segundos (15 * 2s)
+      // Tenta por 30 segundos
       if (isDone || attempts > 15) {
         clearInterval(interval)
         if (!isDone) setStatus("atrasado")
@@ -51,7 +58,7 @@ function SuccessContent() {
     }, 2000)
 
     return () => clearInterval(interval)
-  }, [sessionId])
+  }, [sessionId, searchParams])
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
@@ -59,15 +66,18 @@ function SuccessContent() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
           <h1 className="text-2xl font-bold text-gray-800">Processando Pedido...</h1>
-          <p className="text-gray-500">Aguardando confirmação do servidor.</p>
+          <p className="text-gray-500">Estamos confirmando seu pagamento com o Mercado Pago.</p>
         </div>
       )}
 
       {status === "erro" && (
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Algo deu errado!</h1>
-          <p className="text-gray-600">Não conseguimos identificar sua sessão de pagamento.</p>
-          <Link href="/" className="mt-4 inline-block text-pink-600 font-bold">Voltar ao Início</Link>
+        <div className="text-center bg-white p-8 rounded-3xl shadow-lg border">
+          <span className="text-5xl mb-4 block">⚠️</span>
+          <h1 className="text-2xl font-bold text-red-600">Ops! Pedido não localizado</h1>
+          <p className="text-gray-600 mt-2">Não encontramos os dados da sua compra nesta página.</p>
+          <Link href="/" className="mt-6 inline-block bg-pink-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-pink-700 transition">
+            Voltar para a Loja
+          </Link>
         </div>
       )}
 
@@ -85,7 +95,7 @@ function SuccessContent() {
               <span>Total Pago:</span>
               <span>R$ {order.total.toFixed(2)}</span>
             </div>
-            <p className="text-[10px] text-gray-400 break-all">ID: {sessionId}</p>
+            <p className="text-[10px] text-gray-400 break-all mt-4">Comprovante: {sessionId}</p>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -97,11 +107,12 @@ function SuccessContent() {
       )}
 
       {status === "atrasado" && (
-        <div className="text-center p-8 bg-white rounded-2xl shadow-lg border">
-          <h1 className="text-2xl font-bold text-orange-600">Pagamento Confirmado!</h1>
-          <p className="text-gray-600 mt-2">O banco de dados está um pouco lento, mas seu pedido já foi recebido.</p>
-          <p className="text-sm text-gray-500 mt-2">Você pode fechar esta página com segurança.</p>
-          <Link href="/" className="mt-6 inline-block bg-pink-600 text-white px-6 py-2 rounded-lg font-bold">Voltar para a Loja</Link>
+        <div className="text-center p-8 bg-white rounded-3xl shadow-lg border max-w-sm">
+          <span className="text-5xl mb-4 block">⏳</span>
+          <h1 className="text-2xl font-bold text-orange-600">Pagamento Recebido!</h1>
+          <p className="text-gray-600 mt-2">Estamos terminando de gerar seu pedido no sistema.</p>
+          <p className="text-sm text-gray-400 mt-4 italic">Você receberá a confirmação por e-mail em instantes.</p>
+          <Link href="/" className="mt-6 inline-block bg-pink-600 text-white px-8 py-3 rounded-xl font-bold">Voltar para a Loja</Link>
         </div>
       )}
     </div>
@@ -110,7 +121,11 @@ function SuccessContent() {
 
 export default function SuccessPage() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
+      </div>
+    }>
       <SuccessContent />
     </Suspense>
   )
