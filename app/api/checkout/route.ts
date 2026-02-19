@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const preference = new Preference(client);
     
     // 🚀 AQUI ESTÁ O AJUSTE: Forçando a URL correta da Vercel para o Webhook
-    const notificationUrl = "https://www.verafashionkidsespumoso/api/webhook/mercadopago";
+    const notificationUrl = "https://www.verafashionkidsespumoso.com.br/api/webhook/mercadopago";
     console.log("Gerando checkout com notification_url:", notificationUrl);
 
     const response = await preference.create({
