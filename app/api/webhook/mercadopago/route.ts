@@ -12,10 +12,12 @@ export async function POST(req: Request) {
     const id = searchParams.get("data.id") || searchParams.get("id");
     const type = searchParams.get("type");
 
+    // Ignora notificações que não sejam de pagamento
     if (type !== "payment" || !id) {
       return NextResponse.json({ received: true });
     }
 
+    // 1. Busca os detalhes do pagamento no Mercado Pago
     const payment = await new Payment(client).get({ id });
 
     if (payment.status === "approved") {
@@ -23,47 +25,50 @@ export async function POST(req: Request) {
       const productItems = metadata?.product_items || []; 
       const userId = metadata?.user_id || metadata?.userId; 
 
+      // 2. Cria o pedido no banco de dados
       await prisma.order.create({
         data: {
           userId: userId && userId !== "guest" ? userId : null,
           mercadopagoId: String(payment.id), 
           total: Number(payment.transaction_amount),
           status: "PAID",
-          // Ajuste para não quebrar se o endereço for um objeto JSON
+          
+          // Salva o endereço e o telefone juntos para facilitar sua vida
           shippingAddress: typeof metadata?.address === 'object' 
-            ? JSON.stringify(metadata.address) 
-            : `${metadata?.address || 'Não informado'}`,
+            ? `${JSON.stringify(metadata.address)} | Tel: ${metadata?.phone || 'N/A'}`
+            : `${metadata?.address || 'Não informado'} | Tel: ${metadata?.phone || 'N/A'}`,
           
           items: {
             create: productItems.map((item: any) => {
-              // Verifica se é frete pelo ID ou pela flag 'f'
+              // Identifica se o item é frete (via flag 'f' ou ID)
               const isFreteItem = item.f === true || String(item.id).includes("frete");
 
               return {
-                // ✅ CORREÇÃO: Passando o 'name' que o Prisma exigiu
-                name: isFreteItem ? "Frete" : (item.n || "Produto"),
+                // Se for frete, salva o nome enviado (ex: Frete PAC). Se não, usa o nome do produto.
+                name: item.n || (isFreteItem ? "Frete" : "Produto"),
                 
-                // ✅ CORREÇÃO: Se for frete, productId deve ser null para não dar erro de chave estrangeira
+                // IDs de frete (string) quebram o banco se ele espera Relation de Produto, então mandamos null
                 productId: isFreteItem ? null : item.id,
                 
                 quantity: Number(item.q),
                 price: Number(item.p || 0), 
-                size: item.s || null,
-                color: item.c || null,
-                isFrete: isFreteItem,
+                size: item.s || null,   // ✅ TAMANHO
+                color: item.c || null, // ✅ COR
+                isFrete: isFreteItem,  // ✅ TIPO DE ITEM
               };
             })
           }
         }
       });
 
-      console.log(`✅ Webhook: Pedido MP_${payment.id} processado com sucesso!`);
+      console.log(`✅ [Vera Fashion] Pedido MP_${payment.id} salvo no banco com sucesso!`);
       return NextResponse.json({ updated: true });
     }
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
     console.error("❌ ERRO WEBHOOK MERCADO PAGO:", error.message);
+    // Respondemos 200 para o MP não ficar reenviando o erro infinitamente
     return NextResponse.json({ error: error.message }, { status: 200 });
   }
 }
