@@ -40,7 +40,7 @@ export async function BestSellers() {
               <CardContent className="p-4">
 
                 {/* ranking */}
-                <Badge className="mb-3 w-fit bg-black text-white hover:bg-black font-bold">
+                <Badge className="mb-3 w-fit bg-[#4d154b] text-white hover:bg-[#4d154b] font-bold">
                   #{index + 1} MAIS VENDIDO
                 </Badge>
 
@@ -78,7 +78,7 @@ export async function BestSellers() {
               {/* botões */}
               <CardFooter className="mt-auto p-4 flex flex-col gap-2">
                 <Link href={`/produtos/${product.slug}`} className="w-full">
-                  <Button className="w-full gap-2 font-bold uppercase text-xs">
+                  <Button className="w-full gap-2 font-bold uppercase text-xs bg-[#2fc3c6]">
                     <ShoppingCart className="h-3 w-3" />
                     Ver produto
                   </Button>

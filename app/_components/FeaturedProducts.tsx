@@ -63,7 +63,7 @@ export async function FeaturedProducts() {
               <CardFooter className="mt-auto p-4 flex flex-col gap-2">
                 {/* Botão Ver Produto */}
                 <Link href={`/produtos/${product.slug}`} className="w-full">
-                  <Button className="w-full font-bold uppercase text-xs">Ver produto</Button>
+                  <Button className="w-full font-bold uppercase text-xs bg-[#2fc3c6]">Ver produto</Button>
                 </Link>
 
                 {/* NOVO: Botão Assistência WhatsApp */}
